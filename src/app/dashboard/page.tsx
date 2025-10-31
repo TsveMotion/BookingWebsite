@@ -105,148 +105,273 @@ export default function DashboardPage() {
         <motion.div
           animate={{
             background: [
-              "radial-gradient(circle at 20% 50%, rgba(233, 181, 216, 0.05) 0%, transparent 50%)",
-              "radial-gradient(circle at 80% 50%, rgba(233, 181, 216, 0.05) 0%, transparent 50%)",
-              "radial-gradient(circle at 20% 50%, rgba(233, 181, 216, 0.05) 0%, transparent 50%)",
+              "radial-gradient(circle at 30% 50%, rgba(233, 181, 216, 0.03) 0%, transparent 50%)",
+              "radial-gradient(circle at 70% 50%, rgba(255, 182, 193, 0.03) 0%, transparent 50%)",
+              "radial-gradient(circle at 30% 50%, rgba(216, 191, 216, 0.03) 0%, transparent 50%)",
             ],
           }}
-          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
           className="absolute inset-0"
         />
       </div>
 
-      {/* Welcome Banner */}
-      <WelcomeBanner
-        userName={user?.firstName || undefined}
-        userEmail={user?.emailAddresses[0]?.emailAddress}
-        plan={currentPlan}
-      />
+      <div className="max-w-7xl mx-auto px-6 py-4">
 
-      {/* Stats Grid with Sparklines */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-        <StatsCard
-          title="Bookings This Month"
-          value={bookingsValue}
-          change={`${bookingsChange > 0 ? '+' : ''}${bookingsChange}% from last month`}
-          changeType={bookingsChange > 0 ? "positive" : bookingsChange < 0 ? "negative" : "neutral"}
-          icon={Calendar}
-          gradient="bg-rose-gradient"
-          delay={0.1}
-          tooltip="Total confirmed bookings for the current month"
-          sparkline={bookingsSparkline}
-        />
-        <StatsCard
-          title="Total Clients"
-          value={clientsTotal}
-          change={`${clientsNew > 0 ? '+' : ''}${clientsNew} new this week`}
-          changeType={clientsNew > 0 ? "positive" : "neutral"}
-          icon={Users}
-          gradient="bg-lavender-gradient"
-          delay={0.2}
-          tooltip="Total unique clients in your database"
-        />
-        <StatsCard
-          title="Revenue"
-          value={`£${revenueValue.toFixed(2)}`}
-          change={`${revenueChange > 0 ? '+' : ''}${revenueChange}% from last month`}
-          changeType={revenueChange > 0 ? "positive" : revenueChange < 0 ? "negative" : "neutral"}
-          icon={DollarSign}
-          gradient="bg-blush-gradient"
-          delay={0.3}
-          tooltip="Total revenue from completed bookings"
-          sparkline={revenueSparkline}
-        />
-        <StatsCard
-          title="Growth Rate"
-          value={`${growthRate > 0 ? '+' : ''}${growthRate}%`}
-          change={growthRate > 0 ? "Trending up" : growthRate < 0 ? "Trending down" : "Stable"}
-          changeType={growthRate > 0 ? "positive" : growthRate < 0 ? "negative" : "neutral"}
-          icon={TrendingUp}
-          gradient="bg-luxury-gradient"
-          delay={0.4}
-          tooltip="Average growth based on bookings and revenue"
-        />
-      </div>
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
+          <h1 className="text-4xl md:text-5xl font-heading font-black text-white mb-2">
+            <span className="relative inline-block">
+              Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}, {user?.firstName || "there"} 👋
+              <motion.div
+                className="absolute -bottom-2 left-0 right-0 h-1 bg-luxury-gradient rounded-full"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+              />
+            </span>
+          </h1>
+          <p className="text-white/60 text-lg mt-3">
+            {currentPlan !== "Free" ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-luxury-gradient text-white">
+                  {currentPlan.toUpperCase()}
+                </span>
+                Your dashboard at a glance
+              </span>
+            ) : (
+              "Welcome to your beauty business dashboard"
+            )}
+          </p>
+        </motion.div>
 
-      {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-3 gap-8 mt-8">
-        {/* Left Column - 2/3 width */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Upgrade Prompt (only shown for free users) */}
-          <UpgradePrompt currentPlan={currentPlan} />
-
-          {/* Progress & Goal Section */}
-          <GettingStartedChecklist />
-
-          {/* Enhanced Revenue Chart with Recharts */}
-          <EnhancedRevenueChart 
-            data={revenueData?.data || []}
-            total={revenueData?.total || 0}
-            change={revenueData?.change || 0}
-          />
-
-          {/* Loyalty Shortcut (Pro/Business feature) */}
-          {currentPlan !== "Free" && (
+        {/* Stats Grid - Matching Bookings Page Style */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Bookings Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="glass-card p-6 relative overflow-hidden group"
+          >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
-            >
-              <Link href="/dashboard/loyalty" className="block">
-                <div className="glass-card p-6 hover:bg-white/10 transition-all group cursor-pointer border-2 border-transparent hover:border-lavender/30">
-                  <div className="flex items-center gap-4">
-                    <div className="p-4 rounded-2xl bg-luxury-gradient">
-                      <Gift className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-1">
-                        Loyalty & Retention Tools
-                      </h3>
-                      <p className="text-white/60 text-sm">
-                        Keep clients coming back with rewards and campaigns
-                      </p>
-                    </div>
-                    <span className="text-white/40 group-hover:text-white transition-colors">→</span>
-                  </div>
+              className="absolute inset-0 bg-luxury-gradient opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+              whileHover={{ scale: 1.05 }}
+            />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-rose-gradient bg-opacity-20">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
-              </Link>
-            </motion.div>
-          )}
+                <TrendingUp className="w-5 h-5 text-green-400" />
+              </div>
+              <p className="text-white/60 text-sm mb-1">Bookings This Month</p>
+              <motion.p
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.4, type: "spring" }}
+                className="text-4xl font-bold text-white"
+              >
+                {bookingsValue}
+              </motion.p>
+              <p className={`text-sm mt-2 ${
+                bookingsChange > 0 ? "text-green-400" : bookingsChange < 0 ? "text-red-400" : "text-white/60"
+              }`}>
+                {bookingsChange > 0 ? '+' : ''}{bookingsChange}% from last month
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Clients Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+            className="glass-card p-6 relative overflow-hidden group"
+          >
+            <motion.div
+              className="absolute inset-0 bg-luxury-gradient opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+              whileHover={{ scale: 1.05 }}
+            />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-lavender-gradient bg-opacity-20">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                {clientsNew > 0 && <Users className="w-5 h-5 text-lavender" />}
+              </div>
+              <p className="text-white/60 text-sm mb-1">Total Clients</p>
+              <motion.p
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.5, type: "spring" }}
+                className="text-4xl font-bold text-white"
+              >
+                {clientsTotal}
+              </motion.p>
+              <p className="text-sm mt-2 text-white/60">
+                {clientsNew > 0 ? '+' : ''}{clientsNew} new this week
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Revenue Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="glass-card p-6 relative overflow-hidden group"
+          >
+            <motion.div
+              className="absolute inset-0 bg-luxury-gradient opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+              whileHover={{ scale: 1.05 }}
+            />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-blush-gradient bg-opacity-20">
+                  <DollarSign className="w-6 h-6 text-white" />
+                </div>
+                {revenueChange > 0 && <TrendingUp className="w-5 h-5 text-green-400" />}
+              </div>
+              <p className="text-white/60 text-sm mb-1">Revenue</p>
+              <motion.p
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.6, type: "spring" }}
+                className="text-4xl font-bold gradient-text"
+              >
+                £{revenueValue.toFixed(2)}
+              </motion.p>
+              <p className={`text-sm mt-2 ${
+                revenueChange > 0 ? "text-green-400" : revenueChange < 0 ? "text-red-400" : "text-white/60"
+              }`}>
+                {revenueChange > 0 ? '+' : ''}{revenueChange}% from last month
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Growth Rate Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="glass-card p-6 relative overflow-hidden group"
+          >
+            <motion.div
+              className="absolute inset-0 bg-luxury-gradient opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+              whileHover={{ scale: 1.05 }}
+            />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-luxury-gradient bg-opacity-20">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                <TrendingUp className={`w-5 h-5 ${
+                  growthRate > 0 ? "text-green-400" : growthRate < 0 ? "text-red-400" : "text-white/60"
+                }`} />
+              </div>
+              <p className="text-white/60 text-sm mb-1">Growth Rate</p>
+              <motion.p
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.7, type: "spring" }}
+                className="text-4xl font-bold text-white"
+              >
+                {growthRate > 0 ? '+' : ''}{growthRate}%
+              </motion.p>
+              <p className={`text-sm mt-2 ${
+                growthRate > 0 ? "text-green-400" : growthRate < 0 ? "text-red-400" : "text-white/60"
+              }`}>
+                {growthRate > 0 ? "Trending up" : growthRate < 0 ? "Trending down" : "Stable"}
+              </p>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Right Column - 1/3 width */}
-        <div className="space-y-8">
-          {/* Upcoming Appointments */}
-          <UpcomingAppointments 
-            appointments={upcomingAppointments}
-            todayCount={todayAppointments}
-          />
+        {/* Main Content Grid */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Left Column - 2/3 width */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Upgrade Prompt (only shown for free users) */}
+            {currentPlan === "Free" && <UpgradePrompt currentPlan={currentPlan} />}
 
-          {/* Booking Link Card */}
-          <BookingLinkCard />
+            {/* Getting Started Checklist */}
+            <GettingStartedChecklist />
 
-          {/* Glam Tip */}
-          <GlamTip />
+            {/* Enhanced Revenue Chart with Recharts */}
+            <EnhancedRevenueChart 
+              data={revenueData?.data || []}
+              total={revenueData?.total || 0}
+              change={revenueData?.change || 0}
+            />
 
-          {/* Smart Assistant (AI placeholder) */}
-          <SmartAssistant />
+            {/* Loyalty Shortcut (Pro/Business feature) */}
+            {currentPlan !== "Free" && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+              >
+                <Link href="/dashboard/loyalty" className="block">
+                  <div className="glass-card p-6 hover:bg-white/10 transition-all group cursor-pointer border-2 border-transparent hover:border-lavender/30">
+                    <div className="flex items-center gap-4">
+                      <div className="p-4 rounded-2xl bg-luxury-gradient">
+                        <Gift className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white mb-1">
+                          Loyalty & Retention Tools
+                        </h3>
+                        <p className="text-white/60 text-sm">
+                          Keep clients coming back with rewards and campaigns
+                        </p>
+                      </div>
+                      <span className="text-white/40 group-hover:text-white transition-colors">→</span>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            )}
+          </div>
 
-          {/* Quick Actions */}
-          <QuickActions />
+          {/* Right Column - 1/3 width */}
+          <div className="space-y-8">
+            {/* Upcoming Appointments */}
+            <UpcomingAppointments 
+              appointments={upcomingAppointments}
+              todayCount={todayAppointments}
+            />
+
+            {/* Booking Link Card */}
+            <BookingLinkCard />
+
+            {/* Glam Tip */}
+            <GlamTip />
+
+            {/* Smart Assistant (AI placeholder) */}
+            <SmartAssistant />
+
+            {/* Quick Actions */}
+            <QuickActions />
+          </div>
         </div>
+
+        {/* Footer Branding */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+          className="mt-16 text-center"
+        >
+          <p className="text-white/40 text-sm">
+            GlamBooking — Empowering beauty professionals worldwide 💖
+          </p>
+        </motion.div>
       </div>
-
-      {/* Footer Branding */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="mt-16 text-center"
-      >
-        <p className="text-white/40 text-sm">
-          GlamBooking — Empowering beauty professionals worldwide 💖
-        </p>
-      </motion.div>
     </div>
   );
 }
