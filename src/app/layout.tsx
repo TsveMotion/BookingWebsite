@@ -24,6 +24,11 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "GlamBooking - Your Business Deserves Better Booking",
   description: "Luxury booking platform for beauty professionals with the lowest UK booking fees, 24/7 support, and unlimited bookings.",
+  icons: {
+    icon: '/logo/LOGO_FAVICON_NEW.png',
+    shortcut: '/logo/LOGO_FAVICON_NEW.png',
+    apple: '/logo/LOGO_FAVICON_NEW.png',
+  },
 };
 
 export default function RootLayout({

@@ -19,6 +19,7 @@ export async function GET() {
         scheduleConfigured: true,
         teamInvited: true,
         bookingsReceived: true,
+        onboardingCompleteShown: true,
         _count: {
           select: {
             services: true,
@@ -41,6 +42,7 @@ export async function GET() {
           scheduleConfigured: true,
           teamInvited: true,
           bookingsReceived: true,
+          onboardingCompleteShown: true,
           _count: {
             select: {
               services: true,
@@ -77,16 +79,18 @@ export async function GET() {
     const allComplete = user.profileCompleted && user.servicesAdded && 
       user.scheduleConfigured && user.teamInvited && user.bookingsReceived;
 
-    // Simplified: removed onboardingCompleteShown check since field not in schema
+    // Hide checklist if user has dismissed it
+    const hidden = allComplete && user.onboardingCompleteShown;
 
     return NextResponse.json({
       profileCompleted: user.profileCompleted,
-      servicesAdded: user.servicesAdded,
+      servicesAdded,
       scheduleConfigured: user.scheduleConfigured,
       teamInvited: user.teamInvited,
-      bookingsReceived: user.bookingsReceived,
+      firstBookingReceived,
       totalCompleted,
       progress,
+      hidden,
     });
   } catch (error) {
     console.error('Error fetching onboarding progress:', error);

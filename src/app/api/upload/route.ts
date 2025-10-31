@@ -23,15 +23,20 @@ export async function POST(request: Request) {
     }
 
     // Check file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid file type. Allowed: PNG, JPG, WEBP, SVG' }, { status: 400 });
     }
 
+    // Generate unique filename to avoid duplicates
+    const uniqueName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+
     // Upload to Vercel Blob
-    const blob = await put(file.name, file, {
+    const blob = await put(uniqueName, file, {
       access: 'public',
       token: process.env.BLOB_READ_WRITE_TOKEN,
+      addRandomSuffix: true,
+      contentType: file.type,
     });
 
     return NextResponse.json({ url: blob.url });

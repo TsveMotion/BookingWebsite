@@ -25,6 +25,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { SignOutButton } from "@clerk/nextjs";
+import { LogoSwitcher } from "./LogoSwitcher";
 
 interface NavItem {
   label: string;
@@ -72,16 +73,8 @@ export function Sidebar() {
     <div className="flex flex-col h-full">
       {/* Logo & User Greeting */}
       <div className="p-6 border-b border-white/10">
-        <Link href="/dashboard" className="flex items-center gap-2 mb-4">
-          <motion.div
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            className="p-2 rounded-xl bg-luxury-gradient"
-          >
-            <Sparkles className="w-5 h-5 text-white" />
-          </motion.div>
-          <span className="text-xl font-heading font-bold">
-            <span className="gradient-text">Glam</span>Booking
-          </span>
+        <Link href="/dashboard" className="block mb-4">
+          <LogoSwitcher showText={true} size="md" />
         </Link>
         
         {user && (

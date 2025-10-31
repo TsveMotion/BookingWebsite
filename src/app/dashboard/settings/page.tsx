@@ -126,24 +126,40 @@ export default function SettingsPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/upload', {
+      const uploadResponse = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setProfile({ ...profile!, logoUrl: data.url });
+      if (uploadResponse.ok) {
+        const data = await uploadResponse.json();
         
-        // Auto-save the logo URL
-        await fetch("/api/profile", {
+        // Save the logo URL to the database
+        const saveResponse = await fetch("/api/profile", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ logoUrl: data.url }),
         });
+
+        if (saveResponse.ok) {
+          setProfile({ ...profile!, logoUrl: data.url });
+          setSaved(true);
+          setTimeout(() => setSaved(false), 3000);
+          
+          // Trigger a page reload to update the sidebar logo
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          throw new Error('Failed to save logo URL');
+        }
+      } else {
+        const error = await uploadResponse.json();
+        alert(`Upload failed: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Logo upload failed:', error);
+      alert('Failed to upload logo. Please try again.');
     } finally {
       setUploadingLogo(false);
     }
@@ -603,18 +619,43 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-white font-semibold mb-1">Current Plan</p>
-                <p className="text-lavender text-2xl font-bold">Free</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-2xl font-bold capitalize">
+                    <span className={profile?.plan === 'business' ? 'gradient-text' : profile?.plan === 'pro' ? 'text-lavender' : 'text-white'}>
+                      {profile?.plan || 'Free'}
+                    </span>
+                  </p>
+                  {profile?.plan === 'business' && (
+                    <span className="px-3 py-1 bg-luxury-gradient text-white text-xs font-bold rounded-full">
+                      BUSINESS
+                    </span>
+                  )}
+                  {profile?.plan === 'pro' && (
+                    <span className="px-3 py-1 bg-lavender/20 text-lavender text-xs font-bold rounded-full border border-lavender/30">
+                      PRO
+                    </span>
+                  )}
+                </div>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="px-6 py-3 bg-luxury-gradient rounded-xl font-semibold text-white hover:shadow-lg hover:shadow-lavender/20"
-              >
-                Upgrade Plan
-              </motion.button>
+              {profile?.plan !== 'business' && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => window.location.href = '/dashboard/billing'}
+                  className="px-6 py-3 bg-luxury-gradient rounded-xl font-semibold text-white hover:shadow-lg hover:shadow-lavender/20"
+                >
+                  {profile?.plan === 'pro' ? 'Upgrade to Business' : 'Upgrade Plan'}
+                </motion.button>
+              )}
             </div>
             <p className="text-white/60 text-sm">
-              Upgrade to Pro or Business for unlimited bookings, team collaboration, and advanced analytics.
+              {profile?.plan === 'business' ? (
+                'You have full access to all GlamBooking features including custom branding, unlimited team members, and priority support.'
+              ) : profile?.plan === 'pro' ? (
+                'Upgrade to Business for custom branding, unlimited team members, and advanced features.'
+              ) : (
+                'Upgrade to Pro or Business for unlimited bookings, team collaboration, and advanced analytics.'
+              )}
             </p>
           </div>
         </div>
