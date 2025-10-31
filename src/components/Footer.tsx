@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Sparkles, Twitter, Instagram, Facebook, Mail } from "lucide-react";
+import { Twitter, Instagram, Facebook, Mail } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -11,18 +12,21 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center">
               <motion.div
-                whileHover={{ scale: 1.05, rotate: 5 }}
-                className="p-2 rounded-xl bg-luxury-gradient"
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.2 }}
               >
-                <Sparkles className="w-5 h-5 text-white" />
+                <Image
+                  src="/logo/Logo_Long.png"
+                  alt="GlamBooking Logo"
+                  width={160}
+                  height={40}
+                  className="object-contain transition-all hover:opacity-90"
+                />
               </motion.div>
-              <span className="text-xl font-heading font-bold">
-                <span className="gradient-text">Glam</span>Booking
-              </span>
             </Link>
-            <p className="text-white/60 text-sm">
+            <p className="text-white/60 text-sm max-w-xs">
               The ultimate booking platform for beauty and wellness professionals.
             </p>
           </div>
@@ -39,6 +43,11 @@ export function Footer() {
               <li>
                 <Link href="/pricing" className="text-white/60 hover:text-white text-sm transition-colors">
                   Pricing
+                </Link>
+              </li>
+              <li>
+                <Link href="/book" className="text-white/60 hover:text-white text-sm transition-colors">
+                  Find Businesses
                 </Link>
               </li>
               <li>
@@ -60,17 +69,17 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/contact" className="text-white/60 hover:text-white text-sm transition-colors">
-                  Contact Us
+                  Contact
                 </Link>
               </li>
               <li>
                 <Link href="/privacy" className="text-white/60 hover:text-white text-sm transition-colors">
-                  Privacy Policy
+                  Privacy
                 </Link>
               </li>
               <li>
                 <Link href="/terms" className="text-white/60 hover:text-white text-sm transition-colors">
-                  Terms of Service
+                  Terms
                 </Link>
               </li>
             </ul>
@@ -120,11 +129,21 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-white/40 text-sm">
+          <p className="text-white/40 text-sm text-center md:text-left">
             © {new Date().getFullYear()} GlamBooking. All rights reserved.
           </p>
-          <p className="text-white/40 text-sm">
-            Made with 💜 for beauty professionals
+          <p className="text-sm text-center md:text-right">
+            <span className="text-white/40">Made with </span>
+            <span className="text-pink-400">💜</span>
+            <span className="text-white/40"> for beauty professionals by </span>
+            <a 
+              href="https://tsvweb.co.uk" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-pink-400 hover:text-pink-300 transition-colors hover:underline font-medium"
+            >
+              tsvweb.co.uk
+            </a>
           </p>
         </div>
       </div>

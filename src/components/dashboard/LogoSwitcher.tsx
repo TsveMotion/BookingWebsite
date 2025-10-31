@@ -67,15 +67,12 @@ export function LogoSwitcher({ showText = true, size = "md", className = "" }: L
     return (
       <div className={`flex items-center gap-3 ${className}`}>
         <div className="relative">
-          <img
+          <Image
             src={profile.logoUrl}
             alt={profile.businessName || "Business Logo"}
-            style={{
-              width: size === "sm" ? "32px" : size === "md" ? "40px" : "48px",
-              height: size === "sm" ? "32px" : size === "md" ? "40px" : "48px",
-              objectFit: "contain",
-            }}
-            className="rounded-lg"
+            width={size === "sm" ? 120 : size === "md" ? 160 : 180}
+            height={size === "sm" ? 30 : size === "md" ? 40 : 48}
+            className="object-contain rounded-lg"
             onError={() => {
               console.error("Logo failed to load, falling back to default");
               setImageError(true);
@@ -93,18 +90,19 @@ export function LogoSwitcher({ showText = true, size = "md", className = "" }: L
 
   // Default GlamBooking logo
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex items-center ${className}`}>
       <motion.div
-        whileHover={{ scale: 1.05, rotate: 5 }}
-        className={`${config.container} rounded-xl bg-luxury-gradient`}
+        whileHover={{ scale: 1.05 }}
+        transition={{ duration: 0.2 }}
       >
-        <Sparkles className={`${config.icon} text-white`} />
+        <Image
+          src="/logo/Logo_Long.png"
+          alt="GlamBooking Logo"
+          width={size === "sm" ? 120 : size === "md" ? 160 : 180}
+          height={size === "sm" ? 30 : size === "md" ? 40 : 48}
+          className="object-contain transition-all hover:opacity-90"
+        />
       </motion.div>
-      {showText && (
-        <span className={`${config.text} font-heading font-bold`}>
-          <span className="gradient-text">Glam</span>Booking
-        </span>
-      )}
     </div>
   );
 }

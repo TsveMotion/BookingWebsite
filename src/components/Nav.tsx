@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
-import { Sparkles, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import Image from "next/image";
 
 export function Nav() {
   const { isSignedIn, isLoaded } = useUser();
@@ -16,55 +17,64 @@ export function Nav() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl"
+      className="fixed top-0 left-0 right-0 z-50 border-b border-gradient-to-r from-[#EAB8D8] via-[#BBA8F5] to-[#91C4F2] bg-black/30 backdrop-blur-md"
+      style={{ borderBottomWidth: '1px', borderImageSlice: 1, borderImageSource: 'linear-gradient(to right, #EAB8D8, #BBA8F5, #91C4F2)' }}
     >
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center">
           <motion.div
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            className="p-2 rounded-xl bg-luxury-gradient"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.2 }}
           >
-            <Sparkles className="w-5 h-5 text-white" />
+            <Image
+              src="/logo/Logo_Long.png"
+              alt="GlamBooking Logo"
+              width={160}
+              height={40}
+              className="object-contain transition-all hover:opacity-90"
+              priority
+            />
           </motion.div>
-          <span className="text-xl md:text-2xl font-heading font-bold">
-            <span className="gradient-text">Glam</span>Booking
-          </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
-          {isLoaded && !isSignedIn && (
-            <>
-              <Link 
-                href="/" 
-                className="text-sm text-white/80 hover:text-white transition-colors"
-              >
-                Home
-              </Link>
-              <Link 
-                href="/features" 
-                className="text-sm text-white/80 hover:text-white transition-colors"
-              >
-                Features
-              </Link>
-              <Link 
-                href="/pricing" 
-                className="text-sm text-white/80 hover:text-white transition-colors"
-              >
-                Pricing
-              </Link>
-            </>
-          )}
-          
-          {isLoaded && isSignedIn && (
-            <Link 
-              href="/dashboard" 
-              className="text-sm text-white/80 hover:text-white transition-colors"
-            >
-              Dashboard
-            </Link>
-          )}
+        <div className="hidden md:flex items-center gap-6">
+          <Link 
+            href="/features" 
+            className="text-sm text-white/80 hover:text-white transition-colors relative group"
+          >
+            Features
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+          <Link 
+            href="/pricing" 
+            className="text-sm text-white/80 hover:text-white transition-colors relative group"
+          >
+            Pricing
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+          <Link 
+            href="/book" 
+            className="text-sm text-white/80 hover:text-white transition-colors relative group"
+          >
+            Find Businesses
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+          <Link 
+            href="/dashboard" 
+            className="text-sm text-white/80 hover:text-white transition-colors relative group"
+          >
+            Dashboard
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+          <Link 
+            href="/help" 
+            className="text-sm text-white/80 hover:text-white transition-colors relative group"
+          >
+            Help
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+          </Link>
         </div>
 
         {/* Desktop Auth Buttons */}
@@ -141,6 +151,34 @@ export function Nav() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Pricing
+                </Link>
+                <Link 
+                  href="/book" 
+                  className="block text-white/80 hover:text-white transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Find Businesses
+                </Link>
+                <Link 
+                  href="/dashboard" 
+                  className="block text-white/80 hover:text-white transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  href="/help" 
+                  className="block text-white/80 hover:text-white transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Help
+                </Link>
+                <Link 
+                  href="/contact" 
+                  className="block text-white/80 hover:text-white transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Contact
                 </Link>
                 <div className="pt-4 space-y-2">
                   <SignInButton mode="modal">
