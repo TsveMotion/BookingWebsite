@@ -301,10 +301,30 @@ export default function SettingsPage() {
                       className="h-16 w-auto object-contain rounded-lg bg-white/5 p-2 border border-white/10"
                     />
                     <button
-                      onClick={() => setProfile({ ...profile, logoUrl: undefined })}
-                      className="text-red-400 hover:text-red-300 text-sm transition-colors"
+                      onClick={async () => {
+                        if (confirm('Are you sure you want to remove your logo?')) {
+                          try {
+                            const response = await fetch("/api/profile", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ logoUrl: null }),
+                            });
+                            if (response.ok) {
+                              setProfile({ ...profile, logoUrl: undefined });
+                              setSaved(true);
+                              setTimeout(() => setSaved(false), 2000);
+                              // Reload to update sidebar
+                              setTimeout(() => window.location.reload(), 1000);
+                            }
+                          } catch (error) {
+                            console.error('Failed to remove logo:', error);
+                            alert('Failed to remove logo. Please try again.');
+                          }
+                        }
+                      }}
+                      className="text-red-400 hover:text-red-300 text-sm transition-colors font-medium"
                     >
-                      Remove
+                      Remove Logo
                     </button>
                   </div>
                 )}

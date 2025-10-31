@@ -65,22 +65,29 @@ export async function PATCH(request: Request) {
       }
     }
 
+    // Build update data object, handling null values explicitly
+    const updateData: any = {
+      profileCompleted: true,
+    };
+
+    if (businessName !== undefined) updateData.businessName = businessName;
+    if (slug !== undefined) updateData.businessSlug = slug;
+    if (address !== undefined) updateData.address = address;
+    if (description !== undefined) updateData.description = description;
+    if (phone !== undefined) updateData.phone = phone;
+    if (logo !== undefined) updateData.logo = logo;
+    
+    // Handle logoUrl explicitly to allow null (removal)
+    if ('logoUrl' in body) updateData.logoUrl = logoUrl;
+    
+    if (payoutFrequency !== undefined) updateData.payoutFrequency = payoutFrequency;
+    if (notificationsEmail !== undefined) updateData.notificationsEmail = notificationsEmail;
+    if (notificationsWhatsApp !== undefined) updateData.notificationsWhatsApp = notificationsWhatsApp;
+    if (emailRemindersEnabled !== undefined) updateData.emailRemindersEnabled = emailRemindersEnabled;
+
     const user = await prisma.user.update({
       where: { id: userId },
-      data: {
-        businessName: businessName !== undefined ? businessName : undefined,
-        businessSlug: slug || undefined,
-        address: address !== undefined ? address : undefined,
-        description: description !== undefined ? description : undefined,
-        phone: phone !== undefined ? phone : undefined,
-        logo: logo !== undefined ? logo : undefined,
-        logoUrl: logoUrl !== undefined ? logoUrl : undefined,
-        payoutFrequency: payoutFrequency !== undefined ? payoutFrequency : undefined,
-        notificationsEmail: notificationsEmail !== undefined ? notificationsEmail : undefined,
-        notificationsWhatsApp: notificationsWhatsApp !== undefined ? notificationsWhatsApp : undefined,
-        emailRemindersEnabled: emailRemindersEnabled !== undefined ? emailRemindersEnabled : undefined,
-        profileCompleted: true,
-      },
+      data: updateData,
     });
 
     return NextResponse.json(user);

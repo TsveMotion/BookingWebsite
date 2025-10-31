@@ -203,7 +203,40 @@ export async function POST(request: Request) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const bookingId = session.metadata?.bookingId;
+        const type = session.metadata?.type;
+        const userId = session.metadata?.userId;
+        const creditAmount = session.metadata?.creditAmount;
 
+        // Handle SMS Credits Purchase
+        if (type === 'sms_credits' && userId && creditAmount) {
+          console.log('💳 SMS Credits purchase completed for user:', userId);
+          
+          const credits = parseInt(creditAmount);
+          
+          // Update user's SMS credits
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              smsCredits: { increment: credits },
+            },
+          });
+
+          // Update purchase record
+          await prisma.smsPurchase.updateMany({
+            where: {
+              userId,
+              stripePaymentId: session.id,
+            },
+            data: {
+              status: 'completed',
+            },
+          });
+
+          console.log(`✅ Added ${credits} SMS credits to user ${userId}`);
+          break;
+        }
+
+        // Handle Booking Payment
         if (!bookingId) {
           console.warn('⚠️ No bookingId in session metadata');
           break;
@@ -401,82 +434,6 @@ export async function POST(request: Request) {
         break;
       }
 
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        
-        console.log('🛒 Checkout session completed:', session.id);
-
-        // Find booking by Stripe session ID
-        const booking = await prisma.booking.findFirst({
-          where: { stripeSessionId: session.id },
-          include: { 
-            user: true,
-            client: true,
-            service: true,
-          },
-        });
-
-        if (booking) {
-          console.log('📅 Processing booking payment:', booking.id);
-          // Mark booking as paid and confirmed
-          await prisma.booking.update({
-            where: { id: booking.id },
-            data: {
-              paymentStatus: 'PAID',
-              status: 'confirmed',
-              paymentIntentId: session.payment_intent as string,
-            },
-          });
-
-          // Update user's total earnings
-          const platformFee = booking.totalAmount * 0.05;
-          const businessEarnings = booking.totalAmount - platformFee;
-
-          await prisma.user.update({
-            where: { id: booking.userId },
-            data: {
-              totalEarnings: {
-                increment: businessEarnings,
-              },
-            },
-          });
-
-          console.log('✅ Booking payment status updated to PAID and confirmed');
-
-          // Send confirmation email to client
-          if (booking.client.email) {
-            console.log('📧 Sending booking confirmation to:', booking.client.email);
-            const formattedDate = booking.startTime.toLocaleDateString('en-GB', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            });
-            const formattedTime = booking.startTime.toLocaleTimeString('en-GB', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            });
-
-            await sendEmail({
-              to: booking.client.email,
-              name: booking.client.name,
-              subject: '✨ Payment Confirmed - Booking Complete!',
-              html: bookingConfirmationEmail(
-                booking.client.name,
-                booking.user.businessName || 'the business',
-                booking.service.name,
-                formattedDate,
-                formattedTime,
-                booking.totalAmount
-              ),
-            });
-            console.log('✅ Booking confirmation email sent');
-          }
-        } else {
-          console.log('ℹ️ No booking found for session:', session.id);
-        }
-        break;
-      }
 
       default:
         console.log('ℹ️ Unhandled event type:', event.type);
