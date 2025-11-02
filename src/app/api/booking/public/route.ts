@@ -60,7 +60,33 @@ export async function POST(request: Request) {
     let stripeSessionId: string | null = null;
     let checkoutUrl: string | null = null;
 
-    if (service.price > 0 && user.stripeAccountId) {
+    if (service.price > 0) {
+      // Validate Stripe Connect account exists and is active
+      if (!user.stripeAccountId) {
+        return NextResponse.json(
+          { error: 'This salon has not connected their Stripe account yet. Please contact them to enable online payments.' },
+          { status: 400 }
+        );
+      }
+
+      // Verify the Stripe account is valid and active
+      try {
+        const account = await stripe.accounts.retrieve(user.stripeAccountId);
+        
+        if (!account || account.charges_enabled === false) {
+          return NextResponse.json(
+            { error: 'This salon\'s payment account is not fully set up. Please contact them to complete their Stripe onboarding.' },
+            { status: 400 }
+          );
+        }
+      } catch (stripeError: any) {
+        console.error('Invalid Stripe account:', stripeError);
+        return NextResponse.json(
+          { error: 'Invalid payment configuration. The salon needs to reconnect their Stripe account.' },
+          { status: 400 }
+        );
+      }
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [{
@@ -83,7 +109,7 @@ export async function POST(request: Request) {
           userId: user.id,
         },
         payment_intent_data: {
-          application_fee_amount: Math.round(service.price * 100 * 0.05),
+          application_fee_amount: 0, // 0% commission as per requirements
           transfer_data: {
             destination: user.stripeAccountId,
           },

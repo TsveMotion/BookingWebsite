@@ -14,6 +14,7 @@ import {
   BarChart3,
   Settings,
   CreditCard,
+  Wallet,
   LogOut,
   Menu,
   X,
@@ -45,6 +46,7 @@ const navItems: NavItem[] = [
   { label: "Loyalty & Retention", href: "/dashboard/loyalty", icon: Gift, requiredPlan: "pro" },
   { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3, requiredPlan: "pro" },
   { label: "Billing", href: "/dashboard/billing", icon: CreditCard },
+  { label: "Payouts", href: "/dashboard/payouts", icon: Wallet },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 

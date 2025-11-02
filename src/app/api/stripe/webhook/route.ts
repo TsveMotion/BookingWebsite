@@ -24,6 +24,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
+  // Log webhook event
+  try {
+    await prisma.webhookEvent.create({
+      data: {
+        type: event.type,
+        stripeEventId: event.id,
+        payload: event as any,
+      },
+    });
+  } catch (logError) {
+    console.error('Failed to log webhook event:', logError);
+  }
+
   try {
     console.log('🔔 Webhook received:', event.type);
 
@@ -54,7 +67,8 @@ export async function POST(request: Request) {
             await prisma.user.update({
               where: { id: user.id },
               data: {
-                subscriptionPlan: subscription.id,
+                stripeSubscriptionId: subscription.id,
+                subscriptionPlan: subscription.id, // Keep for backward compatibility
                 subscriptionStatus: subscription.status,
                 plan: planName,
               },
@@ -127,21 +141,45 @@ export async function POST(request: Request) {
         });
 
         if (user) {
-          const planName = subscription.metadata?.plan || 'free';
-          const billingPeriod = subscription.metadata?.billingPeriod || 'monthly';
+          // Extract plan info from subscription price
+          const priceId = subscription.items.data[0]?.price.id;
+          const priceNickname = subscription.items.data[0]?.price.nickname;
+          const interval = subscription.items.data[0]?.price.recurring?.interval;
+          
+          // Determine plan from price ID or nickname
+          let planName = 'free';
+          let displayName = 'Free';
+          
+          if (priceId) {
+            const isMonthly = interval === 'month';
+            const isYearly = interval === 'year';
+            
+            if (priceId.includes(process.env.STRIPE_PRO_MONTHLY_PRICE_ID!) || 
+                priceId.includes(process.env.STRIPE_PRO_YEARLY_PRICE_ID!) ||
+                priceNickname?.toLowerCase().includes('pro')) {
+              planName = 'pro';
+              displayName = isYearly ? 'Pro Plan (Yearly)' : 'Pro Plan (Monthly)';
+            } else if (priceId.includes(process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID!) || 
+                       priceId.includes(process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID!) ||
+                       priceNickname?.toLowerCase().includes('business')) {
+              planName = 'business';
+              displayName = isYearly ? 'Business Plan (Yearly)' : 'Business Plan (Monthly)';
+            }
+          }
 
-          console.log('📊 Updating subscription for user:', user.id);
+          console.log('📊 Updating subscription for user:', user.id, 'Plan:', planName, 'Status:', subscription.status);
 
           await prisma.user.update({
             where: { id: user.id },
             data: {
-              subscriptionPlan: subscription.id,
+              stripeSubscriptionId: subscription.id,
+              subscriptionPlan: subscription.id, // Keep for backward compatibility
               subscriptionStatus: subscription.status,
-              plan: subscription.status === 'active' ? planName : user.plan,
+              plan: subscription.status === 'active' || subscription.status === 'trialing' ? planName : user.plan,
             },
           });
 
-          console.log('✅ Subscription updated');
+          console.log('✅ Subscription updated successfully');
         } else {
           console.warn('⚠️ User not found for customer:', customerId);
         }
@@ -163,7 +201,8 @@ export async function POST(request: Request) {
           await prisma.user.update({
             where: { id: user.id },
             data: {
-              subscriptionPlan: null,
+              stripeSubscriptionId: null,
+              subscriptionPlan: null, // Keep for backward compatibility
               subscriptionStatus: 'canceled',
               plan: 'free',
             },
@@ -207,6 +246,67 @@ export async function POST(request: Request) {
         const userId = session.metadata?.userId;
         const creditAmount = session.metadata?.creditAmount;
 
+        // Handle Subscription Checkout (mode: 'subscription')
+        if (session.mode === 'subscription' && session.customer) {
+          console.log('🎉 Subscription checkout completed for customer:', session.customer);
+          
+          const customerId = typeof session.customer === 'string' ? session.customer : session.customer.id;
+          
+          // Get subscription from session
+          const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+          
+          if (subscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            const priceId = subscription.items.data[0]?.price.id;
+            const priceNickname = subscription.items.data[0]?.price.nickname;
+            const interval = subscription.items.data[0]?.price.recurring?.interval;
+            
+            // Determine plan
+            let planName = 'free';
+            let displayName = 'Free';
+            
+            if (priceId) {
+              const isYearly = interval === 'year';
+              
+              if (priceId.includes(process.env.STRIPE_PRO_MONTHLY_PRICE_ID!) || 
+                  priceId.includes(process.env.STRIPE_PRO_YEARLY_PRICE_ID!) ||
+                  priceNickname?.toLowerCase().includes('pro')) {
+                planName = 'pro';
+                displayName = isYearly ? 'Pro Plan (Yearly)' : 'Pro Plan (Monthly)';
+              } else if (priceId.includes(process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID!) || 
+                         priceId.includes(process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID!) ||
+                         priceNickname?.toLowerCase().includes('business')) {
+                planName = 'business';
+                displayName = isYearly ? 'Business Plan (Yearly)' : 'Business Plan (Monthly)';
+              }
+            }
+            
+            // Set SMS credits
+            let smsCredits = 0;
+            if (planName === 'pro') smsCredits = 250;
+            if (planName === 'business') smsCredits = 1000;
+            
+            console.log('📊 Setting plan to:', displayName);
+            
+            // Update user
+            await prisma.user.update({
+              where: { stripeCustomerId: customerId },
+              data: {
+                stripeSubscriptionId: subscription.id,
+                subscriptionStatus: subscription.status,
+                plan: planName,
+                smsCredits: smsCredits,
+                smsCreditsUsed: 0,
+                smsCreditsRenewDate: new Date(),
+              },
+            });
+            
+            console.log(`✅ Subscription activated: ${displayName} with ${smsCredits} SMS credits`);
+          }
+          
+          break;
+        }
+
         // Handle SMS Credits Purchase
         if (type === 'sms_credits' && userId && creditAmount) {
           console.log('💳 SMS Credits purchase completed for user:', userId);
@@ -238,7 +338,7 @@ export async function POST(request: Request) {
 
         // Handle Booking Payment
         if (!bookingId) {
-          console.warn('⚠️ No bookingId in session metadata');
+          console.log('⚠️ Checkout completed but no specific handler matched');
           break;
         }
 
@@ -301,9 +401,9 @@ export async function POST(request: Request) {
             },
           });
 
-          // Update user earnings
-          const platformFee = booking.totalAmount * 0.05;
-          const businessEarnings = booking.totalAmount - platformFee;
+          // Update user earnings (0% commission as per requirements)
+          const platformFee = 0; // No commission charged
+          const businessEarnings = booking.totalAmount;
 
           await prisma.user.update({
             where: { id: booking.userId },
@@ -313,6 +413,58 @@ export async function POST(request: Request) {
           });
 
           console.log('💰 User earnings updated +£', businessEarnings.toFixed(2));
+
+          // Create Stripe Transfer to salon's connected account
+          if (booking.user.stripeAccountId) {
+            try {
+              const amountInPence = Math.round(booking.totalAmount * 100);
+              const platformFeeInPence = 0; // No platform commission
+              const stripeFeeInPence = Math.round(amountInPence * 0.029 + 30); // Stripe fee: 2.9% + 30p
+              const netAmountInPence = amountInPence - stripeFeeInPence;
+
+              console.log('💸 Creating transfer to connected account:', booking.user.stripeAccountId);
+              console.log(`   Amount: £${booking.totalAmount} | Platform Fee: £0.00 | Stripe Fee: £${(stripeFeeInPence / 100).toFixed(2)} | Net: £${(netAmountInPence / 100).toFixed(2)}`);
+
+              const transfer = await stripe.transfers.create({
+                amount: netAmountInPence,
+                currency: 'gbp',
+                destination: booking.user.stripeAccountId,
+                description: `Booking payment for ${booking.service.name} - ${booking.client.name}`,
+                metadata: {
+                  bookingId: booking.id,
+                  userId: booking.userId,
+                  clientName: booking.client.name,
+                },
+              });
+
+              // Record payout in database
+              await prisma.payout.create({
+                data: {
+                  userId: booking.userId,
+                  amount: amountInPence,
+                  currency: 'gbp',
+                  status: 'processing',
+                  stripeTransferId: transfer.id,
+                  bookingId: booking.id,
+                  platformFee: platformFeeInPence,
+                  stripeFee: stripeFeeInPence,
+                  netAmount: netAmountInPence,
+                  metadata: {
+                    serviceName: booking.service.name,
+                    clientName: booking.client.name,
+                    bookingDate: booking.startTime.toISOString(),
+                  },
+                },
+              });
+
+              console.log('✅ Transfer created and payout recorded:', transfer.id);
+            } catch (transferError) {
+              console.error('❌ Failed to create transfer:', transferError);
+              // Continue with booking confirmation even if transfer fails
+            }
+          } else {
+            console.warn('⚠️ No Stripe account connected for user:', booking.userId);
+          }
 
           // Send confirmation email with invoice
           const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL}${pdfUrl}`;
@@ -383,9 +535,9 @@ export async function POST(request: Request) {
             },
           });
 
-          // Update user earnings
-          const platformFee = booking.totalAmount * 0.05;
-          const businessEarnings = booking.totalAmount - platformFee;
+          // Update user earnings (0% commission)
+          const platformFee = 0; // No commission
+          const businessEarnings = booking.totalAmount;
 
           await prisma.user.update({
             where: { id: booking.userId },
@@ -435,14 +587,120 @@ export async function POST(request: Request) {
       }
 
 
+      case 'payout.paid': {
+        const payout = event.data.object as Stripe.Payout;
+        console.log('💰 Payout paid:', payout.id);
+
+        try {
+          await prisma.payout.updateMany({
+            where: { stripePayoutId: payout.id },
+            data: {
+              status: 'paid',
+              payoutDate: new Date(payout.arrival_date * 1000),
+            },
+          });
+          console.log('✅ Payout marked as paid in database');
+        } catch (error) {
+          console.error('❌ Failed to update payout status:', error);
+        }
+        break;
+      }
+
+      case 'payout.failed': {
+        const payout = event.data.object as Stripe.Payout;
+        console.log('❌ Payout failed:', payout.id);
+
+        try {
+          await prisma.payout.updateMany({
+            where: { stripePayoutId: payout.id },
+            data: {
+              status: 'failed',
+              failureReason: payout.failure_message || 'Unknown error',
+            },
+          });
+          console.log('✅ Payout marked as failed in database');
+        } catch (error) {
+          console.error('❌ Failed to update payout status:', error);
+        }
+        break;
+      }
+
+      case 'transfer.created':
+      case 'transfer.paid': {
+        const transfer = event.data.object as Stripe.Transfer;
+        console.log('💸 Transfer event:', event.type, transfer.id);
+
+        try {
+          await prisma.payout.updateMany({
+            where: { stripeTransferId: transfer.id },
+            data: {
+              status: event.type === 'transfer.paid' ? 'paid' : 'processing',
+              payoutDate: event.type === 'transfer.paid' ? new Date() : undefined,
+            },
+          });
+          console.log('✅ Transfer status updated in database');
+        } catch (error) {
+          console.error('❌ Failed to update transfer status:', error);
+        }
+        break;
+      }
+
+      case 'transfer.failed': {
+        const transfer = event.data.object as Stripe.Transfer;
+        console.log('❌ Transfer failed:', transfer.id);
+
+        try {
+          await prisma.payout.updateMany({
+            where: { stripeTransferId: transfer.id },
+            data: {
+              status: 'failed',
+              failureReason: transfer.failure_message || 'Transfer failed',
+            },
+          });
+          console.log('✅ Transfer marked as failed in database');
+        } catch (error) {
+          console.error('❌ Failed to update transfer status:', error);
+        }
+        break;
+      }
+
       default:
         console.log('ℹ️ Unhandled event type:', event.type);
     }
 
     console.log('✅ Webhook processed successfully');
+    
+    // Mark webhook as processed
+    try {
+      await prisma.webhookEvent.updateMany({
+        where: { stripeEventId: event.id },
+        data: {
+          processed: true,
+          processedAt: new Date(),
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to mark webhook as processed:', logError);
+    }
+    
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('❌ Webhook handler error:', error);
+    
+    // Log webhook error
+    try {
+      await prisma.webhookEvent.updateMany({
+        where: { stripeEventId: event.id },
+        data: {
+          processed: true,
+          processedAt: new Date(),
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log webhook error:', logError);
+    }
+    
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }

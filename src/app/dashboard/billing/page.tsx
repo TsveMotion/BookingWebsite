@@ -24,6 +24,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 interface BillingData {
   plan: string;
+  planDisplayName?: string;
   status: string;
   nextBillingDate: string | null;
   amountDue: number;
@@ -127,59 +128,60 @@ export default function BillingPage() {
 
     setChangingPlan(true);
     try {
-      const response = await fetch("/api/stripe/update-subscription", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planName, billingPeriod }),
-      });
+      // For new subscriptions, use checkout. For existing, use portal
+      if (billing?.plan === "free") {
+        // Create new subscription via checkout
+        const response = await fetch("/api/stripe/create-subscription-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planName, billingPeriod }),
+        });
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        if (data.checkoutUrl) {
-          // Redirect to Stripe Checkout for new subscription
+        const data = await response.json();
+        
+        if (response.ok && data.checkoutUrl) {
           window.location.href = data.checkoutUrl;
+        } else if (data.redirectToPortal && data.portalUrl) {
+          window.location.href = data.portalUrl;
         } else {
-          // Subscription updated successfully
-          showToast(data.message || "Plan updated successfully!", "success");
-          await mutateBilling();
-          setShowChangePlanModal(false);
+          showToast(data.error || "Failed to start subscription", "error");
+          setChangingPlan(false);
         }
       } else {
-        // Show specific error message
-        const errorMsg = data.error || "Failed to update plan";
-        showToast(errorMsg, "error");
-        console.error("Plan change error:", data);
+        // User has existing subscription - use Stripe Portal to change it
+        const response = await fetch("/api/stripe/portal", { method: "POST" });
+        const data = await response.json();
+        
+        if (response.ok && data.url) {
+          window.location.href = data.url;
+        } else {
+          showToast(data.error || "Failed to open billing portal", "error");
+          setChangingPlan(false);
+        }
       }
     } catch (error) {
       console.error("Failed to change plan:", error);
       showToast("Network error. Please try again.", "error");
-    } finally {
       setChangingPlan(false);
     }
   };
 
-  const handleCancelSubscription = async (immediately: boolean = false) => {
+  const handleCancelSubscription = async () => {
+    // Use Stripe Portal for cancellations - it's more robust
     setCancelingSubscription(true);
     try {
-      const response = await fetch("/api/stripe/cancel-subscription", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ immediately }),
-      });
-
+      const response = await fetch("/api/stripe/portal", { method: "POST" });
       const data = await response.json();
-      if (response.ok) {
-        showToast(data.message || "Subscription canceled", "success");
-        mutateBilling();
-        setShowCancelModal(false);
+      
+      if (response.ok && data.url) {
+        window.location.href = data.url;
       } else {
-        showToast(data.error || "Failed to cancel subscription", "error");
+        showToast(data.error || "Failed to open billing portal", "error");
+        setCancelingSubscription(false);
       }
     } catch (error) {
-      console.error("Failed to cancel subscription:", error);
+      console.error("Failed to open portal:", error);
       showToast("Failed to cancel subscription", "error");
-    } finally {
       setCancelingSubscription(false);
     }
   };
@@ -287,8 +289,8 @@ export default function BillingPage() {
             </div>
 
             <div className="mb-4">
-              <p className="text-4xl font-heading font-black gradient-text capitalize mb-2">
-                {currentPlan}
+              <p className="text-4xl font-heading font-black gradient-text mb-2">
+                {billing.planDisplayName || currentPlan}
               </p>
               {billing.nextBillingDate && (
                 <div className="flex items-center gap-2 text-white/60 text-sm">
@@ -783,11 +785,11 @@ export default function BillingPage() {
                     Keep Subscription
                   </button>
                   <button
-                    onClick={() => handleCancelSubscription(false)}
+                    onClick={handleCancelSubscription}
                     disabled={cancelingSubscription}
                     className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-all disabled:opacity-50"
                   >
-                    {cancelingSubscription ? "Canceling..." : "Cancel Plan"}
+                    {cancelingSubscription ? "Opening Portal..." : "Cancel Plan"}
                   </button>
                 </div>
               </motion.div>

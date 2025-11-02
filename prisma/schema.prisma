@@ -19,9 +19,10 @@ model User {
   name                    String?
   stripeCustomerId        String?      @unique
   stripeAccountId         String?      @unique
-  subscriptionPlan        String?
+  stripeSubscriptionId    String?      @unique
+  subscriptionPlan        String? // DEPRECATED: Use stripeSubscriptionId instead
   subscriptionStatus      String?
-  plan                    String       @default("free") // free, starter, pro, business
+  plan                    String       @default("free") // free, pro, business
   businessName            String?
   businessSlug            String?      @unique
   address                 String?
@@ -360,4 +361,43 @@ model BookingPreferences {
   updatedAt       DateTime @updatedAt
 
   @@index([userId])
+}
+
+model Payout {
+  id              String   @id @default(cuid())
+  userId          String // Salon owner receiving the payout
+  amount          Int // Amount in pence/cents
+  currency        String   @default("gbp")
+  status          String   @default("pending") // pending | processing | paid | failed
+  stripePayoutId  String?  @unique
+  stripeTransferId String? @unique
+  bookingId       String?
+  platformFee     Int      @default(0) // GlamBooking commission (5%)
+  stripeFee       Int      @default(0) // Stripe processing fee
+  netAmount       Int // Amount after fees
+  payoutDate      DateTime?
+  failureReason   String?
+  metadata        Json? // Additional payout metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([bookingId])
+  @@index([payoutDate])
+}
+
+model WebhookEvent {
+  id            String   @id @default(cuid())
+  type          String // Event type (e.g., checkout.session.completed)
+  stripeEventId String   @unique
+  payload       Json // Full webhook payload
+  processed     Boolean  @default(false)
+  error         String?  @db.Text
+  createdAt     DateTime @default(now())
+  processedAt   DateTime?
+
+  @@index([type])
+  @@index([processed])
+  @@index([createdAt])
 }

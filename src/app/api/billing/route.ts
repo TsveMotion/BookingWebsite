@@ -67,15 +67,37 @@ export async function GET() {
       }
     }
 
-    // Get plan name from price nickname or product name
+    // Get friendly plan name
     let planName = user.plan || "free";
+    let planDisplayName = "Free";
+    
     if (activeSubscription) {
       const priceItem = activeSubscription.items.data[0];
-      planName = priceItem.price.nickname || priceItem.price.product?.toString() || user.plan || "pro";
+      const priceNickname = priceItem.price.nickname;
+      const interval = priceItem.price.recurring?.interval;
+      
+      // Use nickname if available, otherwise derive from user.plan
+      if (priceNickname) {
+        planDisplayName = priceNickname;
+      } else if (user.plan) {
+        const planLower = user.plan.toLowerCase();
+        const billingType = interval === 'year' ? '(Yearly)' : '(Monthly)';
+        
+        if (planLower.includes('pro')) {
+          planDisplayName = `Pro Plan ${billingType}`;
+          planName = 'pro';
+        } else if (planLower.includes('business')) {
+          planDisplayName = `Business Plan ${billingType}`;
+          planName = 'business';
+        } else {
+          planDisplayName = user.plan;
+        }
+      }
     }
 
     return NextResponse.json({
       plan: planName,
+      planDisplayName,
       status: activeSubscription?.status || "inactive",
       nextBillingDate: activeSubscription
         ? new Date(activeSubscription.current_period_end * 1000).toISOString()

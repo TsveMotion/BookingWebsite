@@ -17,6 +17,7 @@ const navLinks = [
   { name: "Clients", href: "/dashboard/clients" },
   { name: "Services", href: "/dashboard/services" },
   { name: "Team", href: "/dashboard/team" },
+  { name: "Payouts", href: "/dashboard/payouts" },
   { name: "Settings", href: "/dashboard/settings" },
 ];
 

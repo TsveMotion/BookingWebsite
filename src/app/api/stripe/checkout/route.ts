@@ -46,10 +46,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
 
-    // Calculate platform fee (5%)
+    // No platform fee (0% commission as per requirements)
     const totalAmount = service.price;
-    const platformFee = Math.round(totalAmount * 0.05 * 100); // 5% in cents
-    const businessAmount = Math.round(totalAmount * 100) - platformFee;
+    const platformFee = 0; // 0% commission
+    const businessAmount = Math.round(totalAmount * 100);
 
     // Create or find client
     let client = await prisma.client.findFirst({

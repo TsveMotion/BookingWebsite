@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 
@@ -15,12 +15,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      const clerkUser = await currentUser();
+      if (!clerkUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      const primaryEmail =
+        clerkUser.emailAddresses?.[0]?.emailAddress ||
+        clerkUser.primaryEmailAddress?.emailAddress;
+
+      if (!primaryEmail) {
+        return NextResponse.json(
+          { error: 'No email associated with Clerk user' },
+          { status: 400 }
+        );
+      }
+
+      const fullName = [clerkUser.firstName, clerkUser.lastName]
+        .filter(Boolean)
+        .join(' ');
+
+      user = await prisma.user.create({
+        data: {
+          id: clerkUser.id,
+          email: primaryEmail,
+          name: fullName || clerkUser.username || primaryEmail,
+          plan: 'free',
+        },
+      });
     }
 
     let accountId = user.stripeAccountId;

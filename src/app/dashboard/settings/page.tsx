@@ -435,7 +435,7 @@ export default function SettingsPage() {
               <>
                 <p className="text-white font-semibold mb-2">Connect Stripe to accept payments</p>
                 <p className="text-white/60 text-sm mb-4">
-                  Enable online payments and automatic payouts for your bookings. GlamBooking takes a 5% platform fee.
+                  Enable online payments and automatic payouts for your bookings. GlamBooking takes 0% commission — only Stripe fees (1.5% domestic / 2.9% international) apply.
                 </p>
                 <button
                   onClick={handleConnectStripe}

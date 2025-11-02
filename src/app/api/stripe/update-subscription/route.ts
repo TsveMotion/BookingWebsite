@@ -74,27 +74,72 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get price IDs from environment
-    const priceIds: Record<string, { monthly: string; yearly: string }> = {
-      pro: {
-        monthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || "",
-        yearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID || "",
-      },
-      business: {
-        monthly: process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID || "",
-        yearly: process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID || "",
-      },
-    };
-
-    const priceId = priceIds[planName]?.[billingPeriod as "monthly" | "yearly"];
-
-    if (!priceId) {
-      return NextResponse.json(
-        { 
-          error: `Price ID not configured for ${planName} ${billingPeriod}. Please set STRIPE_${planName.toUpperCase()}_${billingPeriod.toUpperCase()}_PRICE_ID in environment variables.` 
-        },
-        { status: 400 }
-      );
+    // Try ENV variables first, fallback to dynamic Stripe lookup
+    let priceId: string | null = null;
+    
+    // Build ENV variable key based on plan and period
+    const envKey = `STRIPE_${planName.toUpperCase()}_${billingPeriod.toUpperCase()}_PRICE_ID`;
+    const envPriceId = process.env[envKey];
+    
+    if (envPriceId) {
+      priceId = envPriceId;
+      console.log(`✅ Using ENV price for ${planName} ${billingPeriod}:`, priceId);
+    } else {
+      console.log(`⚠️ No ENV variable ${envKey}, falling back to dynamic Stripe lookup`);
+      
+      try {
+        // Find the product by name (case-insensitive)
+        const products = await stripe.products.list({ 
+          active: true,
+          limit: 100,
+        });
+        
+        const product = products.data.find(
+          (p) => p.name.toLowerCase().includes(planName.toLowerCase())
+        );
+        
+        if (!product) {
+          return NextResponse.json(
+            { 
+              error: `Product not found for ${planName} plan. Please ensure Stripe products are configured or add ${envKey} to .env`,
+              hint: `Looking for product with name containing "${planName}"`,
+            },
+            { status: 400 }
+          );
+        }
+        
+        // Fetch prices for this product
+        const prices = await stripe.prices.list({
+          product: product.id,
+          active: true,
+        });
+        
+        // Find the correct price based on billing period
+        const targetInterval = billingPeriod === "yearly" ? "year" : "month";
+        const price = prices.data.find(
+          (p) => p.recurring?.interval === targetInterval
+        );
+        
+        if (!price) {
+          return NextResponse.json(
+            { 
+              error: `Price not found for ${planName} ${billingPeriod} plan`,
+              hint: `Product found but no ${targetInterval}ly price configured`,
+            },
+            { status: 400 }
+          );
+        }
+        
+        priceId = price.id;
+        console.log(`✅ Found price via Stripe API for ${planName} ${billingPeriod}:`, priceId);
+        
+      } catch (stripeError: any) {
+        console.error("Error fetching Stripe prices:", stripeError);
+        return NextResponse.json(
+          { error: `Failed to fetch pricing: ${stripeError.message}` },
+          { status: 500 }
+        );
+      }
     }
 
     // If user has existing subscription, update it
