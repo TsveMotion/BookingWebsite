@@ -160,90 +160,139 @@ export default function AnalyticsPage() {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+      <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-heading font-black text-white mb-2">
-                Analytics
-              </h1>
-              <p className="text-white/60 text-lg">
-                Track your business performance and growth
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Date Range Selector */}
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-rose-400/50"
-              >
-                <option value="7">Last 7 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="365">Last year</option>
-              </select>
-              
-              {/* Export Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-400 to-amber-300 text-white font-semibold rounded-xl shadow-lg shadow-rose-400/20 hover:shadow-rose-400/40 transition-all"
-              >
-                <Download className="w-4 h-4" />
-                Export CSV
-              </motion.button>
+          {/* Header Banner */}
+          <div className="mb-8 p-6 glass-card bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-400/30">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <BarChart3 className="w-8 h-8 text-purple-400" />
+                  <h1 className="text-4xl md:text-5xl font-heading font-black text-white">
+                    Advanced Analytics
+                  </h1>
+                  <span className="px-3 py-1 bg-luxury-gradient text-white text-xs font-bold rounded-full">
+                    {userPlan.toUpperCase()}
+                  </span>
+                </div>
+                <p className="text-white/80 text-lg">
+                  GlamBooking — The #1 Salon Platform in the UK (and soon, the world!) 💅
+                </p>
+                <p className="text-white/60 mt-2">
+                  Track your business performance with powerful insights and data-driven analytics
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Date Range Selector */}
+                <select
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                  className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-rose-400/50"
+                >
+                  <option value="7">Last 7 days</option>
+                  <option value="30">Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="365">Last year</option>
+                </select>
+                
+                {/* Export Button */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleExport}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-400 to-amber-300 text-white font-semibold rounded-xl shadow-lg shadow-rose-400/20 hover:shadow-rose-400/40 transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </motion.button>
+              </div>
             </div>
           </div>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
-            <KpiCard
-              title="Total Revenue"
-              value={`£${kpiData?.revenue?.toFixed(0) || '0'}`}
-              icon={DollarSign}
-              trend={kpiData?.trends.revenue ? {
-                value: Math.abs(kpiData.trends.revenue),
-                isPositive: kpiData.trends.revenue >= 0
-              } : undefined}
-              loading={loading}
-            />
-            <KpiCard
-              title="Total Bookings"
-              value={kpiData?.bookings || 0}
-              icon={Calendar}
-              trend={kpiData?.trends.bookings ? {
-                value: Math.abs(kpiData.trends.bookings),
-                isPositive: kpiData.trends.bookings >= 0
-              } : undefined}
-              loading={loading}
-            />
-            <KpiCard
-              title="New Clients"
-              value={kpiData?.newClients || 0}
-              icon={Users}
-              trend={kpiData?.trends.clients ? {
-                value: Math.abs(kpiData.trends.clients),
-                isPositive: kpiData.trends.clients >= 0
-              } : undefined}
-              loading={loading}
-            />
-            <KpiCard
-              title="Avg Booking Value"
-              value={`£${kpiData?.avgBookingValue?.toFixed(0) || '0'}`}
-              icon={TrendingUp}
-              trend={kpiData?.trends.avgValue ? {
-                value: Math.abs(kpiData.trends.avgValue),
-                isPositive: kpiData.trends.avgValue >= 0
-              } : undefined}
-              loading={loading}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-card p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500">
+                  <DollarSign className="w-6 h-6 text-white" />
+                </div>
+                {kpiData?.trends.revenue !== undefined && (
+                  <span className={`text-sm font-semibold ${kpiData.trends.revenue >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {kpiData.trends.revenue >= 0 ? '↑' : '↓'} {Math.abs(kpiData.trends.revenue)}%
+                  </span>
+                )}
+              </div>
+              <p className="text-white/60 text-sm mb-1">Total Revenue</p>
+              <p className="text-3xl font-bold text-white">£{kpiData?.revenue?.toFixed(0) || '0'}</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="glass-card p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                {kpiData?.trends.bookings !== undefined && (
+                  <span className={`text-sm font-semibold ${kpiData.trends.bookings >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {kpiData.trends.bookings >= 0 ? '↑' : '↓'} {Math.abs(kpiData.trends.bookings)}%
+                  </span>
+                )}
+              </div>
+              <p className="text-white/60 text-sm mb-1">Total Bookings</p>
+              <p className="text-3xl font-bold text-white">{kpiData?.bookings || 0}</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="glass-card p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                {kpiData?.trends.clients !== undefined && (
+                  <span className={`text-sm font-semibold ${kpiData.trends.clients >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {kpiData.trends.clients >= 0 ? '↑' : '↓'} {Math.abs(kpiData.trends.clients)}%
+                  </span>
+                )}
+              </div>
+              <p className="text-white/60 text-sm mb-1">New Clients</p>
+              <p className="text-3xl font-bold text-white">{kpiData?.newClients || 0}</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="glass-card p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                {kpiData?.trends.avgValue !== undefined && (
+                  <span className={`text-sm font-semibold ${kpiData.trends.avgValue >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {kpiData.trends.avgValue >= 0 ? '↑' : '↓'} {Math.abs(kpiData.trends.avgValue)}%
+                  </span>
+                )}
+              </div>
+              <p className="text-white/60 text-sm mb-1">Avg Booking Value</p>
+              <p className="text-3xl font-bold text-white">£{kpiData?.avgBookingValue?.toFixed(0) || '0'}</p>
+            </motion.div>
           </div>
 
           {/* Charts Grid */}

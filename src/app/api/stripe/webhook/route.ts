@@ -150,6 +150,13 @@ export async function POST(request: Request) {
           const priceNickname = subscription.items.data[0]?.price.nickname;
           const interval = subscription.items.data[0]?.price.recurring?.interval;
           
+          console.log('🔍 Subscription Update - Price Details:', {
+            priceId,
+            priceNickname,
+            interval,
+            subscriptionStatus: subscription.status,
+          });
+          
           // Determine plan from price ID or nickname
           let planName = 'free';
           let displayName = 'Free';
@@ -158,16 +165,20 @@ export async function POST(request: Request) {
             const isMonthly = interval === 'month';
             const isYearly = interval === 'year';
             
-            if (priceId.includes(process.env.STRIPE_PRO_MONTHLY_PRICE_ID!) || 
-                priceId.includes(process.env.STRIPE_PRO_YEARLY_PRICE_ID!) ||
+            if (priceId === process.env.STRIPE_PRO_MONTHLY_PRICE_ID || 
+                priceId === process.env.STRIPE_PRO_YEARLY_PRICE_ID ||
                 priceNickname?.toLowerCase().includes('pro')) {
               planName = 'pro';
               displayName = isYearly ? 'Pro Plan (Yearly)' : 'Pro Plan (Monthly)';
-            } else if (priceId.includes(process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID!) || 
-                       priceId.includes(process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID!) ||
+              console.log('✅ Detected PRO plan from subscription update');
+            } else if (priceId === process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID || 
+                       priceId === process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID ||
                        priceNickname?.toLowerCase().includes('business')) {
               planName = 'business';
               displayName = isYearly ? 'Business Plan (Yearly)' : 'Business Plan (Monthly)';
+              console.log('✅ Detected BUSINESS plan from subscription update');
+            } else {
+              console.warn('⚠️ Could not determine plan from price ID:', priceId);
             }
           }
 
@@ -267,6 +278,16 @@ export async function POST(request: Request) {
             const priceNickname = subscription.items.data[0]?.price.nickname;
             const interval = subscription.items.data[0]?.price.recurring?.interval;
             
+            console.log('🔍 Subscription Price Details:', {
+              priceId,
+              priceNickname,
+              interval,
+              expectedProMonthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
+              expectedProYearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID,
+              expectedBusinessMonthly: process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID,
+              expectedBusinessYearly: process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID,
+            });
+            
             // Determine plan
             let planName = 'free';
             let displayName = 'Free';
@@ -274,16 +295,20 @@ export async function POST(request: Request) {
             if (priceId) {
               const isYearly = interval === 'year';
               
-              if (priceId.includes(process.env.STRIPE_PRO_MONTHLY_PRICE_ID!) || 
-                  priceId.includes(process.env.STRIPE_PRO_YEARLY_PRICE_ID!) ||
+              if (priceId === process.env.STRIPE_PRO_MONTHLY_PRICE_ID || 
+                  priceId === process.env.STRIPE_PRO_YEARLY_PRICE_ID ||
                   priceNickname?.toLowerCase().includes('pro')) {
                 planName = 'pro';
                 displayName = isYearly ? 'Pro Plan (Yearly)' : 'Pro Plan (Monthly)';
-              } else if (priceId.includes(process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID!) || 
-                         priceId.includes(process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID!) ||
+                console.log('✅ Matched PRO plan');
+              } else if (priceId === process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID || 
+                         priceId === process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID ||
                          priceNickname?.toLowerCase().includes('business')) {
                 planName = 'business';
                 displayName = isYearly ? 'Business Plan (Yearly)' : 'Business Plan (Monthly)';
+                console.log('✅ Matched BUSINESS plan');
+              } else {
+                console.warn('⚠️ No plan match found for price ID:', priceId);
               }
             }
             

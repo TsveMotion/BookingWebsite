@@ -91,10 +91,12 @@ export default function BillingPage() {
         // Check if plan updated
         const response = await fetch(`/api/billing?t=${Date.now()}`);
         const freshData = await response.json();
+        const planName = typeof freshData?.plan === 'string' ? freshData.plan : '';
         
-        if (freshData.plan !== 'free' || attempt >= maxAttempts) {
-          console.log('✅ Plan updated successfully:', freshData.plan);
-          showToast(`Welcome to ${freshData.plan.toUpperCase()}! Your subscription is active.`, 'success');
+        if ((planName && planName !== 'free') || attempt >= maxAttempts) {
+          console.log('✅ Plan updated successfully:', planName || 'unknown');
+          const friendlyPlan = planName ? planName.toUpperCase() : 'PRO';
+          showToast(`Welcome to ${friendlyPlan}! Your subscription is active.`, 'success');
           
           // Clean up URL
           setTimeout(() => {
