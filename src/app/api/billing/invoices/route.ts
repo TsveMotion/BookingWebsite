@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
+import { cacheFetch, cacheKeys } from "@/lib/cache";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-02-24.acacia",
@@ -18,6 +19,27 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Use Redis cache with 5 minute TTL
+    const cacheKey = cacheKeys.billing.invoices(userId);
+    const data = await cacheFetch(
+      cacheKey,
+      async () => {
+        return await fetchInvoicesData(userId);
+      },
+      300 // 5 minutes TTL
+    );
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error fetching billing invoices:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch invoices" },
+      { status: 500 }
+    );
+  }
+}
+
+async function fetchInvoicesData(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { stripeCustomerId: true },
@@ -74,12 +96,5 @@ export async function GET() {
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
-    return NextResponse.json(billingHistory);
-  } catch (error) {
-    console.error("Error fetching billing invoices:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch invoices" },
-      { status: 500 }
-    );
-  }
+    return billingHistory;
 }

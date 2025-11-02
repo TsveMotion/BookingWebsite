@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { cacheFetch, cacheKeys } from '@/lib/cache';
 
 export async function GET() {
   try {
@@ -10,6 +11,27 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Use Redis cache with 60 second TTL
+    const cacheKey = cacheKeys.dashboard.revenue(userId);
+    const data = await cacheFetch(
+      cacheKey,
+      async () => {
+        return await fetchRevenueData(userId);
+      },
+      60 // 60 seconds TTL
+    );
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error fetching revenue data:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch revenue data' },
+      { status: 500 }
+    );
+  }
+}
+
+async function fetchRevenueData(userId: string) {
     // Get last 7 days of revenue data
     const today = new Date();
     const sevenDaysAgo = new Date(today);
@@ -74,16 +96,9 @@ export async function GET() {
       ? Math.round(((totalRevenue - prevTotal) / prevTotal) * 100)
       : 0;
 
-    return NextResponse.json({
+    return {
       data: dailyRevenue,
       total: totalRevenue,
       change: changePercentage,
-    });
-  } catch (error) {
-    console.error('Error fetching revenue data:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch revenue data' },
-      { status: 500 }
-    );
-  }
+    };
 }

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { sendEmail, bookingConfirmationEmail, bookingConfirmationWithInvoiceEmail } from '@/lib/email';
 import { generateInvoicePDF } from '@/lib/invoice';
 import Stripe from 'stripe';
+import { invalidateBillingCache, invalidateAllUserCache } from '@/lib/cache-invalidation';
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -75,6 +76,9 @@ export async function POST(request: Request) {
             });
 
             console.log('✨ User updated successfully! Plan is now:', planName);
+
+            // Invalidate all cache for user after subscription change
+            await invalidateAllUserCache(user.id);
 
             // Send confirmation email only on first payment
             if (subscription.status === 'active' && user.email) {

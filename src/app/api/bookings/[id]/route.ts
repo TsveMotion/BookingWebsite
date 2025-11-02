@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { sendEmail, bookingStatusChangeEmail } from '@/lib/email';
+import { invalidateBookingCache } from '@/lib/cache-invalidation';
 
 type RouteContext = {
   params: Promise<Record<string, string | string[] | undefined>>;
@@ -106,6 +107,9 @@ export async function PATCH(
       }
     }
 
+    // Invalidate cache after booking update
+    await invalidateBookingCache(userId);
+
     return NextResponse.json(booking);
   } catch (error) {
     console.error('Error updating booking:', error);
@@ -141,6 +145,9 @@ export async function DELETE(
         userId,
       },
     });
+
+    // Invalidate cache after booking deletion
+    await invalidateBookingCache(userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

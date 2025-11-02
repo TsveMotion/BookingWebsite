@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 import { sendEmail, paymentLinkEmail, bookingConfirmationEmail } from '@/lib/email';
+import { invalidateBookingCache } from '@/lib/cache-invalidation';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
@@ -196,6 +197,9 @@ export async function POST(request: Request) {
         console.error(`❌ Failed to send email:`, emailResult.error);
       }
     }
+
+    // Invalidate cache after booking creation
+    await invalidateBookingCache(userId);
 
     return NextResponse.json(booking);
   } catch (error) {

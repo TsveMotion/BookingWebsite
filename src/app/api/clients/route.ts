@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { invalidateClientCache } from '@/lib/cache-invalidation';
 
 export async function GET() {
   try {
@@ -66,6 +67,9 @@ export async function POST(request: Request) {
         phone: phone || null,
       },
     });
+
+    // Invalidate cache after client creation
+    await invalidateClientCache(userId);
 
     return NextResponse.json(client);
   } catch (error) {

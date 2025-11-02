@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { cacheFetch, cacheKeys } from '@/lib/cache';
 
 export async function GET() {
   try {
@@ -10,6 +11,27 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Use Redis cache with 60 second TTL
+    const cacheKey = cacheKeys.dashboard.summary(userId);
+    const data = await cacheFetch(
+      cacheKey,
+      async () => {
+        return await fetchDashboardSummary(userId);
+      },
+      60 // 60 seconds TTL
+    );
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error fetching dashboard summary:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch dashboard summary' },
+      { status: 500 }
+    );
+  }
+}
+
+async function fetchDashboardSummary(userId: string) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -138,7 +160,7 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({
+    return {
       bookings: {
         value: bookingsThisMonth,
         change: bookingChange,
@@ -163,12 +185,5 @@ export async function GET() {
         status: apt.status,
       })),
       todayAppointments,
-    });
-  } catch (error) {
-    console.error('Error fetching dashboard summary:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch dashboard summary' },
-      { status: 500 }
-    );
-  }
+    };
 }
