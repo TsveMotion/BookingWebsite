@@ -180,10 +180,10 @@ export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps)
                     <select
                       value={formData.role}
                       onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors"
+                      className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors [&>option]:bg-black [&>option]:text-white"
                     >
-                      <option value="staff">Staff</option>
-                      <option value="manager">Manager</option>
+                      <option value="staff" className="bg-black text-white">Staff</option>
+                      <option value="manager" className="bg-black text-white">Manager</option>
                     </select>
                   </div>
 
@@ -196,11 +196,11 @@ export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps)
                     <select
                       value={formData.locationId}
                       onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors"
+                      className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors [&>option]:bg-black [&>option]:text-white"
                     >
-                      <option value="">All Locations</option>
+                      <option value="" className="bg-black text-white">All Locations</option>
                       {locations.map((loc) => (
-                        <option key={loc.id} value={loc.id}>
+                        <option key={loc.id} value={loc.id} className="bg-black text-white">
                           {loc.name}
                         </option>
                       ))}

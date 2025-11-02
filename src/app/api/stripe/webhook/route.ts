@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe-server';
 import { prisma } from '@/lib/prisma';
 import { sendEmail, bookingConfirmationEmail, bookingConfirmationWithInvoiceEmail } from '@/lib/email';
+import { notifyOwnerPaymentReceived, notifyOwnerSubscriptionChange } from '@/lib/owner-notifications';
 import { generateInvoicePDF } from '@/lib/invoice';
 import Stripe from 'stripe';
 import { invalidateBillingCache, invalidateAllUserCache } from '@/lib/cache-invalidation';
@@ -54,9 +55,24 @@ export async function POST(request: Request) {
           // Get the subscription to access metadata
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           
-          const user = await prisma.user.findUnique({
+          let user = await prisma.user.findUnique({
             where: { stripeCustomerId: customerId },
           });
+
+          if (!user && subscription.metadata) {
+            const metadataUserId = subscription.metadata['userId'] || subscription.metadata['user_id'];
+            if (metadataUserId) {
+              try {
+                user = await prisma.user.update({
+                  where: { id: metadataUserId },
+                  data: { stripeCustomerId: customerId },
+                });
+                console.log('🔗 Linked Stripe customer to user via invoice metadata:', metadataUserId);
+              } catch (linkError) {
+                console.error('❌ Failed to link customer to user from metadata:', metadataUserId, linkError);
+              }
+            }
+          }
 
           if (user) {
             const planName = subscription.metadata?.plan || 'free';
@@ -68,6 +84,7 @@ export async function POST(request: Request) {
             await prisma.user.update({
               where: { id: user.id },
               data: {
+                stripeCustomerId: customerId,
                 stripeSubscriptionId: subscription.id,
                 subscriptionPlan: subscription.id, // Keep for backward compatibility
                 subscriptionStatus: subscription.status,
@@ -140,9 +157,24 @@ export async function POST(request: Request) {
 
         console.log('📝 Subscription event for customer:', customerId, 'status:', subscription.status);
 
-        const user = await prisma.user.findUnique({
+        let user = await prisma.user.findUnique({
           where: { stripeCustomerId: customerId },
         });
+
+        if (!user && subscription.metadata) {
+          const metadataUserId = subscription.metadata['userId'] || subscription.metadata['user_id'];
+          if (metadataUserId) {
+            try {
+              user = await prisma.user.update({
+                where: { id: metadataUserId },
+                data: { stripeCustomerId: customerId },
+              });
+              console.log('🔗 Linked Stripe customer to user via subscription metadata:', metadataUserId);
+            } catch (linkError) {
+              console.error('❌ Failed to link customer to user from metadata:', metadataUserId, linkError);
+            }
+          }
+        }
 
         if (user) {
           // Extract plan info from subscription price
@@ -187,6 +219,7 @@ export async function POST(request: Request) {
           await prisma.user.update({
             where: { id: user.id },
             data: {
+              stripeCustomerId: customerId,
               stripeSubscriptionId: subscription.id,
               subscriptionPlan: subscription.id, // Keep for backward compatibility
               subscriptionStatus: subscription.status,
@@ -319,10 +352,29 @@ export async function POST(request: Request) {
             
             console.log('📊 Setting plan to:', displayName);
             
-            // Update user
+            let user = await prisma.user.findUnique({ where: { stripeCustomerId: customerId } });
+
+            if (!user && session.metadata?.userId) {
+              try {
+                user = await prisma.user.update({
+                  where: { id: session.metadata.userId },
+                  data: { stripeCustomerId: customerId },
+                });
+                console.log('🔗 Linked Stripe customer to user via checkout metadata:', session.metadata.userId);
+              } catch (linkError) {
+                console.error('❌ Failed to link customer to user from checkout metadata:', session.metadata.userId, linkError);
+              }
+            }
+
+            if (!user) {
+              console.warn('⚠️ User not found for customer:', customerId);
+              break;
+            }
+
             const updatedUser = await prisma.user.update({
-              where: { stripeCustomerId: customerId },
+              where: { id: user.id },
               data: {
+                stripeCustomerId: customerId,
                 stripeSubscriptionId: subscription.id,
                 subscriptionStatus: subscription.status,
                 plan: planName,
@@ -331,8 +383,19 @@ export async function POST(request: Request) {
                 smsCreditsRenewDate: new Date(),
               },
             });
-            
+
             console.log(`✅ Subscription activated: ${displayName} with ${smsCredits} SMS credits`);
+            
+            // Send notification to owner about subscription
+            if (updatedUser.email) {
+              await notifyOwnerSubscriptionChange(
+                updatedUser.email,
+                updatedUser.businessName || updatedUser.name || 'Business Owner',
+                planName,
+                session.amount_total ? session.amount_total / 100 : 0,
+                interval || 'monthly'
+              );
+            }
             
             // CRITICAL: Invalidate all cache for user so billing page updates immediately
             await invalidateAllUserCache(updatedUser.id);

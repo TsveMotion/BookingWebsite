@@ -63,14 +63,17 @@ export function Sidebar() {
   const [businessSlug, setBusinessSlug] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [permissions, setPermissions] = useState<any>(null);
+  const [filteredNavItems, setFilteredNavItems] = useState<NavItem[]>(navItems);
 
-  // Fetch user plan and business slug
+  // Fetch user plan, business slug, and permissions
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const [profileRes, slugRes] = await Promise.all([
+        const [profileRes, slugRes, permissionsRes] = await Promise.all([
           fetch("/api/profile"),
           fetch("/api/business/slug"),
+          fetch("/api/permissions"),
         ]);
         
         const profileData = await profileRes.json();
@@ -80,6 +83,28 @@ export function Sidebar() {
           const slugData = await slugRes.json();
           setBusinessSlug(slugData.businessSlug);
           setBusinessName(slugData.businessName);
+        }
+
+        if (permissionsRes.ok) {
+          const perms = await permissionsRes.json();
+          setPermissions(perms);
+          
+          // Filter navigation based on permissions
+          const filtered = navItems.filter((item) => {
+            if (item.href === '/dashboard') return true;
+            if (item.href === '/dashboard/bookings' || item.href === '/dashboard/bookings/calendar') return perms.canManageBookings;
+            if (item.href === '/dashboard/clients') return perms.canManageClients;
+            if (item.href === '/dashboard/services') return perms.canManageServices;
+            if (item.href === '/dashboard/analytics') return perms.canManageAnalytics;
+            if (item.href === '/dashboard/team') return perms.canManageTeam;
+            if (item.href === '/dashboard/locations') return perms.canManageLocations;
+            if (item.href === '/dashboard/loyalty') return perms.isOwner;
+            if (item.href === '/dashboard/billing') return perms.canManageBilling;
+            if (item.href === '/dashboard/payouts') return perms.isOwner;
+            if (item.href === '/dashboard/settings') return perms.isOwner;
+            return true;
+          });
+          setFilteredNavItems(filtered);
         }
       } catch (error) {
         console.error("Failed to fetch user data:", error);
@@ -119,7 +144,7 @@ export function Sidebar() {
 
       {/* Navigation Items */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {navItems.map((item, index) => {
+        {filteredNavItems.map((item, index) => {
           const Icon = item.icon;
           
           // Determine if item is active

@@ -133,5 +133,9 @@ async function fetchBillingData(userId: string) {
       smsCredits: user.smsCredits || 0,
       smsCreditsUsed: user.smsCreditsUsed || 0,
       subscriptionId: activeSubscription?.id,
+      cancelAtPeriodEnd: activeSubscription?.cancel_at_period_end || false,
+      cancelAt: activeSubscription?.cancel_at 
+        ? new Date(activeSubscription.cancel_at * 1000).toISOString()
+        : null,
     };
 }

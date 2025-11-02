@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
 export async function GET() {
   try {
@@ -10,9 +11,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     // Total clients
     const totalClients = await prisma.client.count({
-      where: { userId },
+      where: { userId: ownerId },
     });
 
     // Active this month (had bookings in the last 30 days)
@@ -21,7 +25,7 @@ export async function GET() {
 
     const activeThisMonth = await prisma.client.count({
       where: {
-        userId,
+        userId: ownerId,
         bookings: {
           some: {
             startTime: {
@@ -34,7 +38,7 @@ export async function GET() {
 
     // Total bookings across all clients
     const totalBookings = await prisma.booking.count({
-      where: { userId },
+      where: { userId: ownerId },
     });
 
     // Retention rate (clients who returned within 60 days)
@@ -43,7 +47,7 @@ export async function GET() {
 
     const clientsWithRecentBookings = await prisma.client.findMany({
       where: {
-        userId,
+        userId: ownerId,
         bookings: {
           some: {
             startTime: {

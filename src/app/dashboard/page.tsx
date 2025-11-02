@@ -47,6 +47,41 @@ export default function DashboardPage() {
   const [revenueData, setRevenueData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Check for pending team invitation after Clerk signup
+  useEffect(() => {
+    const checkPendingInvitation = async () => {
+      const pendingToken = localStorage.getItem('pendingInviteToken');
+      const pendingEmail = localStorage.getItem('pendingInviteEmail');
+      
+      if (pendingToken && pendingEmail && user?.primaryEmailAddress?.emailAddress === pendingEmail) {
+        console.log('Processing pending team invitation...');
+        
+        try {
+          const response = await fetch('/api/invite/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: pendingToken }),
+          });
+          
+          if (response.ok) {
+            console.log('✅ Team invitation accepted successfully');
+            // Clear the pending invitation
+            localStorage.removeItem('pendingInviteToken');
+            localStorage.removeItem('pendingInviteEmail');
+            // Reload to update permissions
+            window.location.reload();
+          }
+        } catch (error) {
+          console.error('Failed to process invitation:', error);
+        }
+      }
+    };
+    
+    if (isLoaded && user) {
+      checkPendingInvitation();
+    }
+  }, [isLoaded, user]);
+
   useEffect(() => {
     if (isLoaded && user) {
       Promise.all([

@@ -48,49 +48,79 @@ export async function POST(request: Request) {
     }
 
     // Check if already accepted
-    if (invite.status === 'Active') {
+    if (invite.status.toLowerCase() === 'active') {
       return NextResponse.json({ error: 'Invitation already accepted' }, { status: 400 });
     }
 
-    // Get or create user in our database
-    let user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    // Use a transaction to handle user creation/update atomically
+    let user = await prisma.$transaction(async (tx) => {
+      // First check if user exists by Clerk ID
+      let existingUser = await tx.user.findUnique({
+        where: { id: userId },
+      });
 
-    if (!user) {
-      // Create user record if doesn't exist
-      user = await prisma.user.create({
+      if (existingUser) {
+        // User exists by Clerk ID - just connect them to the business
+        return await tx.user.update({
+          where: { id: userId },
+          data: {
+            businessId: invite.ownerId,
+            email: existingUser.email || invite.email,
+          },
+        });
+      }
+
+      // User not found by Clerk ID - check by email (might be pre-created)
+      const userByEmail = await tx.user.findUnique({
+        where: { email: invite.email },
+      });
+
+      if (userByEmail) {
+        // Pre-created user exists - need to delete and recreate with correct Clerk ID
+        // First delete all related data to avoid constraint issues
+        await tx.client.deleteMany({ where: { userId: userByEmail.id } });
+        await tx.service.deleteMany({ where: { userId: userByEmail.id } });
+        await tx.booking.deleteMany({ where: { userId: userByEmail.id } });
+        await tx.location.deleteMany({ where: { ownerId: userByEmail.id } });
+        await tx.teamMember.deleteMany({ where: { memberId: userByEmail.id } });
+        
+        // Now delete the old user
+        await tx.user.delete({
+          where: { id: userByEmail.id },
+        });
+        
+        // Create fresh with correct Clerk ID and connect to business
+        return await tx.user.create({
+          data: {
+            id: userId,
+            email: invite.email,
+            businessId: invite.ownerId,
+            plan: 'free',
+          },
+        });
+      }
+
+      // Brand new user - create them
+      return await tx.user.create({
         data: {
           id: userId,
           email: invite.email,
+          businessId: invite.ownerId,
           plan: 'free',
         },
       });
-    }
-
-    // Verify email matches
-    if (user.email !== invite.email) {
-      return NextResponse.json(
-        { error: 'Your account email does not match the invitation email' },
-        { status: 400 }
-      );
-    }
-
-    // Update user with business connection
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        businessId: invite.ownerId,
-      },
     });
+
+    console.log(`✅ User ${user.id} connected to business ${invite.ownerId}`);
 
     // Update team member invitation
     await prisma.teamMember.update({
       where: { id: invite.id },
       data: {
-        status: 'Active',
+        status: 'active',
         memberId: userId,
-        name: user.name,
+        name: user.name || invite.name,
+        inviteToken: null, // Clear the token after acceptance
       },
     });
 

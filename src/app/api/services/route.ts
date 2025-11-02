@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
 export async function GET() {
   try {
@@ -10,8 +11,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the actual business owner ID (in case this user is a staff member)
+    const ownerId = await getBusinessOwnerId(userId);
+
     const services = await prisma.service.findMany({
-      where: { userId },
+      where: { userId: ownerId },
       orderBy: {
         createdAt: 'desc',
       },
@@ -58,9 +62,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, description, duration, price } = body;
 
+    // Get the actual business owner ID (in case this user is a staff member)
+    const ownerId = await getBusinessOwnerId(userId);
+
     const service = await prisma.service.create({
       data: {
-        userId,
+        userId: ownerId,
         name,
         description: description || null,
         duration,
@@ -68,9 +75,9 @@ export async function POST(request: Request) {
       },
     });
 
-    // Mark services as added
+    // Mark services as added for the owner
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: ownerId },
       data: { servicesAdded: true },
     });
 

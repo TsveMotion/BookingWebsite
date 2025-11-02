@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { ensureUserExists } from '@/lib/ensure-user';
+import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
 export async function GET() {
   try {
@@ -13,8 +14,11 @@ export async function GET() {
 
     await ensureUserExists(userId);
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     const locations = await prisma.location.findMany({
-      where: { ownerId: userId },
+      where: { ownerId },
       include: {
         staff: {
           select: {
@@ -52,14 +56,17 @@ export async function POST(request: Request) {
 
     await ensureUserExists(userId);
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     // Check user plan and existing locations
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: ownerId },
       select: { plan: true },
     });
 
     const existingLocations = await prisma.location.count({
-      where: { ownerId: userId },
+      where: { ownerId },
     });
 
     const plan = user?.plan?.toLowerCase() || 'free';
@@ -94,7 +101,7 @@ export async function POST(request: Request) {
 
     const location = await prisma.location.create({
       data: {
-        ownerId: userId,
+        ownerId,
         name,
         address: address || null,
         phone: phone || null,

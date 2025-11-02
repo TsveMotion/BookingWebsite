@@ -166,6 +166,11 @@ export default function BookingsPage() {
     setSmsModalOpen(true);
   };
 
+  const handleSmsSent = () => {
+    // Refresh SMS credits after sending
+    fetchSmsCredits();
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -642,29 +647,34 @@ export default function BookingsPage() {
           </div>
 
           {/* SMS Usage Counter */}
-          {userPlan !== "free" && smsCredits.monthlyAllowance > 0 && (
+          {userPlan !== "free" && smsCredits.total > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="glass-card p-4 mt-6"
+              className="glass-card p-4 space-y-2"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-rose-400" />
-                  <span className="text-white font-semibold text-sm">
-                    SMS Usage This Month
+                  <MessageSquare className="w-5 h-5 text-rose-400" />
+                  <span className="text-white font-semibold">
+                    {smsCredits.remaining} SMS Credits
                   </span>
                 </div>
                 <span className="text-white/60 text-sm">
-                  {smsCredits.used} of {smsCredits.monthlyAllowance} messages used
+                  {smsCredits.used} of {smsCredits.total} used
                 </span>
               </div>
               <div className="w-full bg-white/10 rounded-full h-2">
                 <div
                   className="bg-gradient-to-r from-rose-400 to-amber-300 h-2 rounded-full transition-all"
-                  style={{ width: `${(smsCredits.used / smsCredits.monthlyAllowance) * 100}%` }}
+                  style={{ width: `${smsCredits.total > 0 ? (smsCredits.used / smsCredits.total) * 100 : 0}%` }}
                 />
+              </div>
+              <div className="flex items-center justify-between text-xs text-white/60">
+                <span>Monthly allowance: {smsCredits.monthlyAllowance}</span>
+                {smsCredits.total > smsCredits.monthlyAllowance && (
+                  <span className="text-green-400">+ {smsCredits.total - smsCredits.monthlyAllowance} purchased</span>
+                )}
               </div>
               {smsCredits.remaining < 10 && (
                 <p className="text-amber-400 text-xs mt-2">
@@ -717,9 +727,7 @@ export default function BookingsPage() {
             hour: "2-digit",
             minute: "2-digit",
           })}
-          onSmsSent={() => {
-            fetchSmsCredits();
-          }}
+          onSmsSent={handleSmsSent}
         />
       )}
     </div>

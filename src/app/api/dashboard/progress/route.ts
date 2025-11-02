@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
 export async function GET() {
   try {
@@ -10,9 +11,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     // Check if user exists, create if not (avoiding P2002 error)
     let user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: ownerId },
       select: {
         profileCompleted: true,
         servicesAdded: true,
@@ -33,8 +37,8 @@ export async function GET() {
       // Create user if doesn't exist
       user = await prisma.user.create({
         data: {
-          id: userId,
-          email: `user-${userId}@temp.com`, // Temporary email, will be synced
+          id: ownerId,
+          email: `user-${ownerId}@temp.com`, // Temporary email, will be synced
         },
         select: {
           profileCompleted: true,
@@ -109,6 +113,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     const body = await request.json();
     const { field, value } = body;
 
@@ -119,21 +126,21 @@ export async function POST(request: Request) {
     }
 
     // Check if user exists first
-    const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+    const existingUser = await prisma.user.findUnique({ where: { id: ownerId } });
     
     if (!existingUser) {
       // Create user if doesn't exist
       await prisma.user.create({
         data: {
-          id: userId,
-          email: `user-${userId}@temp.com`,
+          id: ownerId,
+          email: `user-${ownerId}@temp.com`,
           [field]: value,
         },
       });
     } else {
       // Update existing user
       await prisma.user.update({
-        where: { id: userId },
+        where: { id: ownerId },
         data: { [field]: value },
       });
     }

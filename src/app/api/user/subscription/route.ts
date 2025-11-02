@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { cacheFetch, cacheKeys } from '@/lib/cache';
+import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
 export async function GET() {
   try {
@@ -11,12 +12,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     // Use Redis cache with 5 minute TTL
-    const cacheKey = cacheKeys.dashboard.subscription(userId);
+    const cacheKey = cacheKeys.dashboard.subscription(ownerId);
     const data = await cacheFetch(
       cacheKey,
       async () => {
-        return await fetchSubscriptionData(userId);
+        return await fetchSubscriptionData(ownerId);
       },
       300 // 5 minutes TTL
     );

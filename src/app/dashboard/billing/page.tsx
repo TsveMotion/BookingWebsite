@@ -39,6 +39,8 @@ interface BillingData {
   interval: string;
   smsCredits: number;
   smsCreditsUsed: number;
+  cancelAtPeriodEnd?: boolean;
+  cancelAt?: string | null;
 }
 
 interface BillingHistoryItem {
@@ -291,7 +293,7 @@ export default function BillingPage() {
 
   const currentPlan = billing.plan || "free";
   const smsRemaining = (billing.smsCredits || 0) - (billing.smsCreditsUsed || 0);
-  const monthlyAllowance = currentPlan === "business" ? 500 : currentPlan === "pro" ? 50 : 0;
+  const monthlyAllowance = currentPlan === "business" ? 1000 : currentPlan === "pro" ? 250 : 0;
 
   const plans = [
     {
@@ -309,31 +311,35 @@ export default function BillingPage() {
     {
       id: "pro",
       name: "Pro",
-      price: { monthly: 19.99, yearly: 203.90 },
+      price: { monthly: 24.99, yearly: 254.99 },
       popular: true,
       features: [
         "Unlimited staff",
-        "SMS reminders (50/month)",
+        "SMS reminders (250/month)",
         "Loyalty & retention tools",
         "Remove branding",
         "Priority support",
         "Advanced analytics",
       ],
       gradient: "from-pink-400 to-purple-500",
+      yearlySavings: 44.89,
+      monthlyEquivalent: 21.24,
     },
     {
       id: "business",
       name: "Business",
-      price: { monthly: 39.99, yearly: 407.90 },
+      price: { monthly: 49.99, yearly: 509.99 },
       features: [
         "Multi-location support",
-        "SMS reminders (500/month)",
+        "SMS reminders (1000/month)",
         "Team roles & staff permissions",
         "Advanced reporting",
         "AI Booking Assistant",
         "Dedicated account manager",
       ],
       gradient: "from-purple-400 to-blue-500",
+      yearlySavings: 89.89,
+      monthlyEquivalent: 42.49,
     },
   ];
 
@@ -381,7 +387,22 @@ export default function BillingPage() {
               <p className="text-4xl font-heading font-black gradient-text mb-2">
                 {billing.planDisplayName || currentPlan}
               </p>
-              {billing.nextBillingDate && (
+              {billing.cancelAtPeriodEnd && billing.nextBillingDate && (
+                <div className="p-3 mb-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <div className="flex items-center gap-2 text-amber-400 text-sm font-semibold mb-1">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>Subscription Ending</span>
+                  </div>
+                  <p className="text-white/80 text-sm">
+                    Your plan will cancel on {new Date(billing.nextBillingDate).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}. You'll have access until then.
+                  </p>
+                </div>
+              )}
+              {billing.nextBillingDate && !billing.cancelAtPeriodEnd && (
                 <div className="flex items-center gap-2 text-white/60 text-sm">
                   <Calendar className="w-4 h-4" />
                   <span>
@@ -492,7 +513,7 @@ export default function BillingPage() {
                   <span className="text-sm text-white/60 ml-1">messages</span>
                 </p>
                 <p className="text-xs text-white/40 mt-1">
-                  {currentPlan === "pro" ? "Pro Plan: 50/mo" : "Business Plan: 500/mo"}
+                  {currentPlan === "pro" ? "Pro Plan: 250/mo" : "Business Plan: 1000/mo"}
                 </p>
               </div>
 
@@ -547,8 +568,8 @@ export default function BillingPage() {
                     <span>Processing...</span>
                   ) : (
                     <span>
-                      1000 Credits - £4.95
-                      <span className="block text-xs text-white/80 mt-1">Best Value</span>
+                      1000 Credits - £14.99
+                      <span className="block text-xs text-white/80 mt-1">Best Value - Save £10</span>
                     </span>
                   )}
                 </button>
@@ -558,7 +579,7 @@ export default function BillingPage() {
                   disabled={buyingCredits}
                   className="flex-1 min-w-[200px] px-6 py-4 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-white/20"
                 >
-                  500 Credits - £2.99
+                  500 Credits - £9.99
                 </button>
               </div>
 
@@ -776,8 +797,21 @@ export default function BillingPage() {
                             <span className="text-white/60 ml-1">/month</span>
                           </div>
                           {billingPeriod === "yearly" && plan.id !== "free" && (
-                            <p className="text-sm text-white/60 mt-1">
-                              £{price.toFixed(2)} billed yearly
+                            <>
+                              <p className="text-sm text-white/60 mt-1">
+                                £{price.toFixed(2)} billed yearly
+                              </p>
+                              {(plan as any).yearlySavings && (
+                                <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full">
+                                  <Sparkles className="w-3 h-3" />
+                                  Save £{(plan as any).yearlySavings.toFixed(2)}/year
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {billingPeriod === "monthly" && plan.id !== "free" && (plan as any).yearlySavings && (
+                            <p className="text-sm text-green-400 mt-1">
+                              Save £{(plan as any).yearlySavings.toFixed(2)}/year with yearly billing
                             </p>
                           )}
                         </div>

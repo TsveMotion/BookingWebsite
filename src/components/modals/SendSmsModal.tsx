@@ -70,12 +70,19 @@ export default function SendSmsModal({
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(`SMS sent! ${data.creditsRemaining} credits remaining`);
+        toast.success(`✅ SMS sent successfully! ${data.creditsRemaining} credits remaining`);
         setMessage("");
-        onSmsSent?.();
+        // Refresh parent data to update credit count
+        if (onSmsSent) {
+          onSmsSent();
+        }
         onClose();
       } else {
-        toast.error(data.error || "Failed to send SMS");
+        if (data.error?.includes("No SMS credits")) {
+          toast.error("⚠️ No credits available. Buy more credits to continue!");
+        } else {
+          toast.error(data.error || "Failed to send SMS");
+        }
       }
     } catch (error) {
       console.error("SMS send error:", error);

@@ -88,11 +88,24 @@ export async function POST(request: Request) {
       appUrl
     );
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: email,
       subject: `You've been invited to join ${businessName} on GlamBooking!`,
       html: emailHtml,
     });
+
+    if (!emailResult.success) {
+      console.error(`❌ Failed to send invitation email to ${email}:`, emailResult.error);
+      // Delete the team member since email failed
+      await prisma.teamMember.delete({ where: { id: teamMember.id } });
+      return NextResponse.json(
+        { error: `Failed to send invitation email: ${emailResult.error}` },
+        { status: 500 }
+      );
+    }
+
+    console.log(`📧 Invitation email sent successfully to ${email}`);
+  
 
     // Mark team invited for onboarding progress
     await prisma.user.update({

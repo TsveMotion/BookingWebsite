@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { invalidateProfileCache } from '@/lib/cache-invalidation';
+import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
 /**
  * Generate a clean URL slug from business name
@@ -38,8 +39,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: ownerId },
       select: {
         businessName: true,
         businessSlug: true,
@@ -79,6 +83,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     const body = await request.json();
     const { businessName } = body;
 
@@ -93,14 +100,14 @@ export async function POST(request: Request) {
     let slug = generateSlug(businessName);
     
     // Check if slug is available
-    let isAvailable = await isSlugAvailable(slug, userId);
+    let isAvailable = await isSlugAvailable(slug, ownerId);
     
     // If slug is taken, append numbers until we find an available one
     let counter = 1;
     const originalSlug = slug;
     while (!isAvailable && counter < 100) {
       slug = `${originalSlug}-${counter}`;
-      isAvailable = await isSlugAvailable(slug, userId);
+      isAvailable = await isSlugAvailable(slug, ownerId);
       counter++;
     }
 
@@ -113,7 +120,7 @@ export async function POST(request: Request) {
 
     // Update user with business name and slug
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: ownerId },
       data: {
         businessName,
         businessSlug: slug,
@@ -156,6 +163,9 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the effective owner ID (for staff members, this returns their owner's ID)
+    const ownerId = await getBusinessOwnerId(userId);
+
     const body = await request.json();
     const { businessSlug } = body;
 
@@ -175,7 +185,7 @@ export async function PUT(request: Request) {
     }
 
     // Check if slug is available
-    const isAvailable = await isSlugAvailable(businessSlug, userId);
+    const isAvailable = await isSlugAvailable(businessSlug, ownerId);
 
     if (!isAvailable) {
       return NextResponse.json(
@@ -186,7 +196,7 @@ export async function PUT(request: Request) {
 
     // Update user slug
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: ownerId },
       data: {
         businessSlug,
       },
@@ -197,7 +207,7 @@ export async function PUT(request: Request) {
     });
 
     // Invalidate user cache
-    await invalidateProfileCache(userId);
+    await invalidateProfileCache(ownerId);
 
     const bookingLink = `https://glambooking.co.uk/book/${businessSlug}`;
 

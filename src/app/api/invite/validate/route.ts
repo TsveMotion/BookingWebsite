@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
 
     // Check if already accepted
-    if (invite.status === 'Active') {
+    if (invite.status.toLowerCase() === 'active') {
       return NextResponse.json({ error: 'Invitation already accepted' }, { status: 400 });
     }
 

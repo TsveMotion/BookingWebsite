@@ -56,16 +56,26 @@ export async function POST(request: Request) {
     const emailHtml = teamInvitationEmail(
       businessName,
       member.role,
-      inviteLink,
-      member.email
+      newToken,
+      appUrl
     );
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: member.email,
       subject: `Reminder: Join ${businessName} on GlamBooking`,
       html: emailHtml,
       name: member.name || undefined,
     });
+
+    if (!emailResult.success) {
+      console.error(`❌ Failed to resend invitation to ${member.email}:`, emailResult.error);
+      return NextResponse.json(
+        { error: `Failed to resend invitation email: ${emailResult.error}` },
+        { status: 500 }
+      );
+    }
+
+    console.log(`📧 Invitation resent successfully to ${member.email}`);
 
     return NextResponse.json({ 
       success: true, 

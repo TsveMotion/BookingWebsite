@@ -3,7 +3,9 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 import { sendEmail, paymentLinkEmail, bookingConfirmationEmail } from '@/lib/email';
+import { notifyOwnerNewBooking } from '@/lib/owner-notifications';
 import { invalidateBookingCache } from '@/lib/cache-invalidation';
+import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
@@ -17,8 +19,25 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the actual business owner ID (in case this user is a staff member)
+    const ownerId = await getBusinessOwnerId(userId);
+
+    // Check if user has a location restriction
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { locationId: true },
+    });
+
+    // Build query filter
+    let whereClause: any = { userId: ownerId };
+    
+    // If staff member has a location assignment, filter by that location
+    if (user?.locationId) {
+      whereClause.locationId = user.locationId;
+    }
+
     const bookings = await prisma.booking.findMany({
-      where: { userId },
+      where: whereClause,
       include: {
         client: true,
         service: true,
@@ -111,10 +130,10 @@ export async function POST(request: Request) {
       paymentStatus = 'UNPAID';
     }
 
-    // Get user profile for business name
+    // Get user profile for business name and email
     const userProfile = await prisma.user.findUnique({
       where: { id: userId },
-      select: { businessName: true, name: true },
+      select: { businessName: true, name: true, email: true },
     });
 
     const businessName = userProfile?.businessName || userProfile?.name || 'Your Business';
@@ -196,6 +215,21 @@ export async function POST(request: Request) {
       } else {
         console.error(`❌ Failed to send email:`, emailResult.error);
       }
+    }
+
+    // Send notification email to business owner
+    if (userProfile?.email) {
+      console.log(`📧 Sending new booking notification to owner: ${userProfile.email}`);
+      await notifyOwnerNewBooking(
+        userProfile.email,
+        userProfile.businessName || userProfile.name || 'Business Owner',
+        client.name,
+        service.name,
+        formattedDate,
+        formattedTime,
+        totalAmount,
+        paymentStatus
+      );
     }
 
     // Invalidate cache after booking creation

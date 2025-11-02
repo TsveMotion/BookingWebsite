@@ -48,16 +48,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // Pricing: 500 credits = £2.99, 1000 credits = £4.95
-    const price = amount === 500 ? 299 : 495; // in pence
-    const description = amount === 500 ? "500 SMS Credits" : "1000 SMS Credits - Best Value";
+    // Use Stripe price IDs: 500 credits = £9.99, 1000 credits = £14.99
+    const priceId = amount === 500 
+      ? process.env.STRIPE_SMS_500_PRICE_ID 
+      : process.env.STRIPE_SMS_1000_PRICE_ID;
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: "SMS credit pricing not configured" },
+        { status: 500 }
+      );
+    }
 
     // Create or use existing customer
     let customerId = user?.stripeCustomerId;
     if (!customerId && user?.email) {
       const customer = await stripe.customers.create({
         email: user.email,
-        metadata: { userId },
+        metadata: { 
+          userId,
+          businessName: user.businessName || '',
+        },
       });
       customerId = customer.id;
       
@@ -70,22 +81,14 @@ export async function POST(request: Request) {
 
     // Create Stripe Checkout session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      payment_method_types: ["card"],
       line_items: [
         {
-          price_data: {
-            currency: "gbp",
-            product_data: {
-              name: `${amount} SMS Credits`,
-              description: description,
-            },
-            unit_amount: price,
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?success=sms`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/bookings?success=sms`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?canceled=true`,
       metadata: {
         userId,
@@ -102,11 +105,12 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create(sessionParams);
 
     // Log the purchase intent
+    const priceAmount = amount === 500 ? 9.99 : 14.99;
     await prisma.smsPurchase.create({
       data: {
         userId,
         credits: amount,
-        amount: price / 100,
+        amount: priceAmount,
         currency: "gbp",
         stripePaymentId: session.id,
         status: "pending",

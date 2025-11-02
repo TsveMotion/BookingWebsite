@@ -239,7 +239,7 @@ export default function NewBookingPage() {
                       value={selectedClient}
                       onChange={(e) => setSelectedClient(e.target.value)}
                       required
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors"
+                      className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors [&>option]:bg-black [&>option]:text-white"
                     >
                       <option value="">Choose a client...</option>
                       {clients.map((client) => (
@@ -317,7 +317,7 @@ export default function NewBookingPage() {
                   value={selectedService}
                   onChange={(e) => setSelectedService(e.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors"
+                  className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors [&>option]:bg-black [&>option]:text-white"
                 >
                   <option value="">Choose a service...</option>
                   {services.map((service) => (

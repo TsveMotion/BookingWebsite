@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     }
 
     let customerEmail = user.email?.trim();
+    let stripeCustomerId = user.stripeCustomerId ?? undefined;
 
     if (!customerEmail) {
       try {
@@ -56,6 +57,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unable to determine customer email address' }, { status: 400 });
     }
 
+    const normalizedEmail: string = customerEmail;
+
+    if (!stripeCustomerId) {
+      try {
+        const customer = await stripe.customers.create({
+          email: normalizedEmail,
+          metadata: {
+            userId,
+            businessName: user.businessName ?? '',
+          },
+        });
+
+        stripeCustomerId = customer.id;
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: { stripeCustomerId: customer.id },
+        });
+      } catch (error) {
+        console.error('Failed to create Stripe customer:', error);
+        return NextResponse.json({ error: 'Failed to create Stripe customer' }, { status: 500 });
+      }
+    } else {
+      try {
+        await stripe.customers.update(stripeCustomerId, {
+          email: normalizedEmail,
+        });
+      } catch (error) {
+        console.warn('Unable to update Stripe customer email:', error);
+      }
+    }
+
     // Create Stripe Checkout session for subscription
     const planKey = plan as (typeof allowedPlans)[number];
     const priceId = PLAN_PRICES[planKey];
@@ -64,8 +97,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Selected plan is not configured.' }, { status: 400 });
     }
 
+    const billingPeriod =
+      priceId === process.env.STRIPE_PRO_YEARLY_PRICE_ID ||
+      priceId === process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID
+        ? 'yearly'
+        : 'monthly';
+
+    if (!stripeCustomerId) {
+      return NextResponse.json({ error: 'Unable to determine Stripe customer' }, { status: 500 });
+    }
+
     const session = await stripe.checkout.sessions.create({
-      customer_email: customerEmail,
+      customer: stripeCustomerId,
       line_items: [
         {
           price: priceId,
@@ -73,11 +116,19 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'subscription',
+      subscription_data: {
+        metadata: {
+          userId,
+          plan,
+          billingPeriod,
+        },
+      },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/billing?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/billing?canceled=true`,
       metadata: {
         userId,
         plan,
+        billingPeriod,
       },
     });
 

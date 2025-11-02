@@ -25,8 +25,8 @@ export async function GET() {
 
     // Calculate monthly allowance based on plan
     let monthlyAllowance = 0;
-    if (user.plan === "pro") monthlyAllowance = 50;
-    if (user.plan === "business") monthlyAllowance = 500;
+    if (user.plan === "pro") monthlyAllowance = 250;
+    if (user.plan === "business") monthlyAllowance = 1000;
 
     // Check if credits need renewal
     const now = new Date();
@@ -37,24 +37,27 @@ export async function GET() {
       needsRenewal = true;
     }
 
-    // If renewal needed, reset credits
+    // If renewal needed, add monthly allowance to existing purchased credits
     if (needsRenewal && monthlyAllowance > 0) {
       const nextRenewDate = new Date();
       nextRenewDate.setMonth(nextRenewDate.getMonth() + 1);
 
+      // Keep any purchased credits and add monthly allowance
+      const newTotal = (user.smsCredits || 0) + monthlyAllowance;
+
       await prisma.user.update({
         where: { id: userId },
         data: {
-          smsCredits: monthlyAllowance,
+          smsCredits: newTotal,
           smsCreditsUsed: 0,
           smsCreditsRenewDate: nextRenewDate,
         },
       });
 
       return NextResponse.json({
-        total: monthlyAllowance,
+        total: newTotal,
         used: 0,
-        remaining: monthlyAllowance,
+        remaining: newTotal,
         monthlyAllowance,
         renewDate: nextRenewDate,
       });

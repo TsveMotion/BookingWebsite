@@ -422,7 +422,7 @@ export default function SettingsPage() {
                   <select
                     value={profile?.payoutFrequency || "weekly"}
                     onChange={(e) => setProfile({ ...profile!, payoutFrequency: e.target.value })}
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blush/50"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blush/50 [&>option]:bg-black [&>option]:text-white"
                     style={{ colorScheme: 'dark' }}
                   >
                     <option value="daily" className="bg-black text-white">Daily</option>
@@ -515,7 +515,7 @@ export default function SettingsPage() {
               <select
                 value={bookingPrefs?.cancellationHrs ?? 24}
                 onChange={(e) => setBookingPrefs({ ...bookingPrefs!, cancellationHrs: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 bg-black border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-lavender/50"
+                className="w-full px-4 py-3 bg-black border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-lavender/50 [&>option]:bg-black [&>option]:text-white"
                 style={{ colorScheme: 'dark' }}
               >
                 <option value="6" className="bg-black text-white">6 hours</option>

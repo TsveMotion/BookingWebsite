@@ -3,24 +3,16 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Mail, CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 export default function InviteAcceptPage() {
   const params = useParams();
   const router = useRouter();
   const token = params.token as string;
 
-  const [loading, setLoading] = useState(true);
   const [validating, setValidating] = useState(true);
   const [inviteData, setInviteData] = useState<any>(null);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    password: "",
-    confirmPassword: "",
-  });
 
   useEffect(() => {
     validateToken();
@@ -38,6 +30,9 @@ export default function InviteAcceptPage() {
 
       if (response.ok) {
         setInviteData(data);
+        // Store invitation token in localStorage for after Clerk signup
+        localStorage.setItem('pendingInviteToken', token);
+        localStorage.setItem('pendingInviteEmail', data.email);
         setValidating(false);
       } else {
         setError(data.error || "Invalid or expired invitation");
@@ -49,54 +44,10 @@ export default function InviteAcceptPage() {
     }
   };
 
-  const handleAcceptInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    // Validation
-    if (!formData.name || !formData.password) {
-      setError("Please fill in all fields");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch(`/api/invite/accept`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          name: formData.name,
-          password: formData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => {
-          router.push("/sign-in?message=Account created! Please sign in.");
-        }, 2000);
-      } else {
-        setError(data.error || "Failed to accept invitation");
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  const handleAcceptInvite = () => {
+    // Redirect to Clerk sign-up with email pre-filled
+    const signUpUrl = `/sign-up?redirect_url=/dashboard&email=${encodeURIComponent(inviteData.email)}`;
+    router.push(signUpUrl);
   };
 
   if (validating) {
@@ -138,23 +89,6 @@ export default function InviteAcceptPage() {
     );
   }
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-purple-950/20 to-black p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full glass-card p-8 text-center"
-        >
-          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Account Created! 🎉</h1>
-          <p className="text-white/60 mb-4">
-            Welcome to GlamBooking! Redirecting you to sign in...
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-purple-950/20 to-black p-4">
@@ -179,59 +113,11 @@ export default function InviteAcceptPage() {
 
         {/* Form Card */}
         <div className="glass-card p-8">
-          <form onSubmit={handleAcceptInvite} className="space-y-4">
-            {/* Name */}
-            <div>
-              <label className="block text-white/80 text-sm font-semibold mb-2">
-                Full Name *
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Your full name"
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-lavender transition-colors"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-white/80 text-sm font-semibold mb-2">
-                Password *
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Min. 8 characters"
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-lavender transition-colors"
-                />
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-white/80 text-sm font-semibold mb-2">
-                Confirm Password *
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                <input
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  placeholder="Confirm your password"
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-lavender transition-colors"
-                />
-              </div>
+          <div className="space-y-6">
+            <div className="text-center">
+              <p className="text-white/80 mb-4">
+                Click below to create your account and join the team. You can sign up with email, Google, or other social accounts.
+              </p>
             </div>
 
             {/* Error Message */}
@@ -241,24 +127,25 @@ export default function InviteAcceptPage() {
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Accept Button */}
             <motion.button
-              type="submit"
+              onClick={handleAcceptInvite}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              disabled={loading}
-              className="w-full px-6 py-4 bg-luxury-gradient text-white font-bold rounded-xl shadow-lg shadow-lavender/30 hover:shadow-lavender/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-6 py-4 bg-luxury-gradient text-white font-bold rounded-xl shadow-lg shadow-lavender/30 hover:shadow-lavender/50 transition-all"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Creating Account...
-                </span>
-              ) : (
-                "Accept Invitation & Create Account"
-              )}
+              Accept Invitation & Create Account
             </motion.button>
-          </form>
+
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <p className="text-white/60 text-sm">
+                ✨ <strong className="text-white">Multiple Sign-Up Options:</strong> Email, Google, and more
+              </p>
+              <p className="text-white/60 text-sm mt-2">
+                🔒 <strong className="text-white">Secure:</strong> Powered by Clerk authentication
+              </p>
+            </div>
+          </div>
 
           <p className="text-white/40 text-xs text-center mt-6">
             By creating an account, you agree to GlamBooking's Terms of Service and Privacy Policy.
