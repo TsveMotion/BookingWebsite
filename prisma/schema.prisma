@@ -38,6 +38,7 @@ model User {
   profileCompleted        Boolean      @default(false)
   servicesAdded           Boolean      @default(false)
   scheduleConfigured      Boolean      @default(false)
+  locationCreated         Boolean      @default(false)
   teamInvited             Boolean      @default(false)
   bookingsReceived        Boolean      @default(false)
   onboardingCompleteShown Boolean      @default(false)
@@ -97,6 +98,7 @@ model StripeProduct {
 model Service {
   id          String         @id @default(cuid())
   userId      String
+  locationId  String?
   name        String
   description String?        @db.Text
   duration    Int
@@ -108,8 +110,10 @@ model Service {
   bookings    Booking[]
   addons      ServiceAddon[]
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location    Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([locationId])
 }
 
 model ServiceAddon {
@@ -240,18 +244,19 @@ model TeamMember {
 }
 
 model Location {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   ownerId      String
   name         String
   address      String?
   phone        String?
   manager      String?
-  openingHours Json?
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  owner        User     @relation("LocationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  staff        User[]   @relation("LocationStaff")
+  workingHours Json?     // Working hours per day: {"monday": {"open": "09:00", "close": "17:00", "closed": false}, ...}
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  owner        User      @relation("LocationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  staff        User[]    @relation("LocationStaff")
+  services     Service[]
 
   @@index([ownerId])
   @@index([active])

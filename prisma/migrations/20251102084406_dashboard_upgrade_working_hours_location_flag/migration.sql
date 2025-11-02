@@ -27,6 +27,7 @@ CREATE TABLE "User" (
     "profileCompleted" BOOLEAN NOT NULL DEFAULT false,
     "servicesAdded" BOOLEAN NOT NULL DEFAULT false,
     "scheduleConfigured" BOOLEAN NOT NULL DEFAULT false,
+    "locationCreated" BOOLEAN NOT NULL DEFAULT false,
     "teamInvited" BOOLEAN NOT NULL DEFAULT false,
     "bookingsReceived" BOOLEAN NOT NULL DEFAULT false,
     "onboardingCompleteShown" BOOLEAN NOT NULL DEFAULT false,
@@ -78,6 +79,7 @@ CREATE TABLE "StripeProduct" (
 CREATE TABLE "Service" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
+    "locationId" TEXT,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "duration" INTEGER NOT NULL,
@@ -210,7 +212,7 @@ CREATE TABLE "Location" (
     "address" TEXT,
     "phone" TEXT,
     "manager" TEXT,
-    "openingHours" JSONB,
+    "workingHours" JSONB,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -386,6 +388,9 @@ CREATE UNIQUE INDEX "StripeProduct_planName_billingPeriod_key" ON "StripeProduct
 CREATE INDEX "Service_userId_idx" ON "Service"("userId");
 
 -- CreateIndex
+CREATE INDEX "Service_locationId_idx" ON "Service"("locationId");
+
+-- CreateIndex
 CREATE INDEX "ServiceAddon_serviceId_idx" ON "ServiceAddon"("serviceId");
 
 -- CreateIndex
@@ -534,6 +539,9 @@ ALTER TABLE "Client" ADD CONSTRAINT "Client_userId_fkey" FOREIGN KEY ("userId") 
 
 -- AddForeignKey
 ALTER TABLE "Service" ADD CONSTRAINT "Service_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Service" ADD CONSTRAINT "Service_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "Location"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ServiceAddon" ADD CONSTRAINT "ServiceAddon_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE CASCADE ON UPDATE CASCADE;

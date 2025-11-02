@@ -183,7 +183,9 @@ export async function POST(request: Request) {
             },
           });
 
-          console.log('✅ Subscription updated successfully');
+          // Invalidate cache after subscription update
+          await invalidateAllUserCache(user.id);
+          console.log('✅ Subscription updated successfully, cache invalidated');
         } else {
           console.warn('⚠️ User not found for customer:', customerId);
         }
@@ -293,7 +295,7 @@ export async function POST(request: Request) {
             console.log('📊 Setting plan to:', displayName);
             
             // Update user
-            await prisma.user.update({
+            const updatedUser = await prisma.user.update({
               where: { stripeCustomerId: customerId },
               data: {
                 stripeSubscriptionId: subscription.id,
@@ -306,6 +308,10 @@ export async function POST(request: Request) {
             });
             
             console.log(`✅ Subscription activated: ${displayName} with ${smsCredits} SMS credits`);
+            
+            // CRITICAL: Invalidate all cache for user so billing page updates immediately
+            await invalidateAllUserCache(updatedUser.id);
+            console.log('🔄 Cache invalidated for user:', updatedUser.id);
           }
           
           break;
@@ -336,7 +342,10 @@ export async function POST(request: Request) {
             },
           });
 
-          console.log(`✅ Added ${credits} SMS credits to user ${userId}`);
+          // Invalidate cache so credits show immediately
+          await invalidateAllUserCache(userId);
+
+          console.log(`✅ Added ${credits} SMS credits to user ${userId}, cache invalidated`);
           break;
         }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
@@ -24,9 +24,13 @@ import {
   Shield,
   ChevronDown,
   ChevronRight,
+  Copy,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import { SignOutButton } from "@clerk/nextjs";
 import { LogoSwitcher } from "./LogoSwitcher";
+import toast from "react-hot-toast";
 
 interface NavItem {
   label: string;
@@ -56,20 +60,43 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const [userPlan, setUserPlan] = useState("free");
+  const [businessSlug, setBusinessSlug] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  // Fetch user plan
-  useState(() => {
-    const fetchPlan = async () => {
+  // Fetch user plan and business slug
+  useEffect(() => {
+    const fetchUserData = async () => {
       try {
-        const response = await fetch("/api/profile");
-        const data = await response.json();
-        setUserPlan(data.plan?.toLowerCase() || "free");
+        const [profileRes, slugRes] = await Promise.all([
+          fetch("/api/profile"),
+          fetch("/api/business/slug"),
+        ]);
+        
+        const profileData = await profileRes.json();
+        setUserPlan(profileData.plan?.toLowerCase() || "free");
+        
+        if (slugRes.ok) {
+          const slugData = await slugRes.json();
+          setBusinessSlug(slugData.businessSlug);
+          setBusinessName(slugData.businessName);
+        }
       } catch (error) {
-        console.error("Failed to fetch plan:", error);
+        console.error("Failed to fetch user data:", error);
       }
     };
-    if (user) fetchPlan();
-  });
+    if (user) fetchUserData();
+  }, [user]);
+
+  const handleCopyLink = () => {
+    if (businessSlug) {
+      const link = `https://glambooking.co.uk/book/${businessSlug}`;
+      navigator.clipboard.writeText(link);
+      setCopied(true);
+      toast.success("Booking link copied!");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -162,6 +189,53 @@ export function Sidebar() {
 
       {/* Divider */}
       <div className="mx-4 border-t border-white/10" />
+
+      {/* Business Booking Link */}
+      {businessSlug && businessName && (
+        <div className="p-4 border-t border-white/10">
+          <div className="p-4 bg-luxury-gradient/10 border border-lavender/20 rounded-xl space-y-3">
+            <div className="flex items-start gap-2">
+              <Sparkles className="w-4 h-4 text-lavender mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">
+                  {businessName}
+                </p>
+                <p className="text-xs text-white/60 truncate">
+                  glambooking.co.uk/book/{businessSlug}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleCopyLink}
+                className="flex-1 px-3 py-2 bg-luxury-gradient hover:opacity-90 text-white text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3 h-3" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3" />
+                    Copy Link
+                  </>
+                )}
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => window.open(`https://glambooking.co.uk/book/${businessSlug}`, "_blank")}
+                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer Actions */}
       <div className="p-4 space-y-2">

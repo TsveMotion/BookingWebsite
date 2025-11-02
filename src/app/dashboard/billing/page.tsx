@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CreditCard,
@@ -62,17 +63,83 @@ export default function BillingPage() {
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  const searchParams = useSearchParams();
+
   // Fetch billing data
-  const { data: billing, error: billingError, mutate: mutateBilling } = useSWR<BillingData>("/api/billing", fetcher);
-  const { data: invoices, error: invoicesError } = useSWR<BillingHistoryItem[]>("/api/billing/invoices", fetcher);
+  const { data: billing, error: billingError, mutate: mutateBilling } = useSWR<BillingData>("/api/billing", fetcher, {
+    revalidateOnFocus: false, // Don't refetch on window focus by default
+  });
+  const { data: invoices, error: invoicesError, mutate: mutateInvoices } = useSWR<BillingHistoryItem[]>("/api/billing/invoices", fetcher, {
+    revalidateOnFocus: false,
+  });
+
+  // CRITICAL: Force refetch when returning from Stripe checkout
+  useEffect(() => {
+    const success = searchParams.get('success');
+    if (success === 'true') {
+      console.log('🔄 Returned from successful payment - forcing data refresh');
+      showToast('Payment successful! Updating your account...', 'success');
+      
+      // Webhook might still be processing, so retry with delays
+      const refetchWithRetry = async (attempt = 1, maxAttempts = 5) => {
+        console.log(`🔄 Refetch attempt ${attempt}/${maxAttempts}`);
+        
+        // Add cache-busting timestamp to force fresh fetch
+        await mutateBilling();
+        await mutateInvoices();
+        
+        // Check if plan updated
+        const response = await fetch(`/api/billing?t=${Date.now()}`);
+        const freshData = await response.json();
+        
+        if (freshData.plan !== 'free' || attempt >= maxAttempts) {
+          console.log('✅ Plan updated successfully:', freshData.plan);
+          showToast(`Welcome to ${freshData.plan.toUpperCase()}! Your subscription is active.`, 'success');
+          
+          // Clean up URL
+          setTimeout(() => {
+            window.history.replaceState({}, '', '/dashboard/billing');
+          }, 2000);
+        } else {
+          // Retry after delay
+          console.log('⏳ Webhook still processing, retrying in 1.5s...');
+          setTimeout(() => refetchWithRetry(attempt + 1, maxAttempts), 1500);
+        }
+      };
+      
+      // Start refetching after 1 second (give webhook time to start)
+      setTimeout(() => refetchWithRetry(), 1000);
+    }
+  }, [searchParams, mutateBilling, mutateInvoices]);
 
   const handleManagePaymentMethods = async () => {
+    if (!billing) return;
+
+    if (!billing.plan || billing.plan === "free") {
+      showToast("Upgrade to Pro or Business to add payment methods.", "error");
+      setShowChangePlanModal(true);
+      return;
+    }
+
     try {
       const response = await fetch("/api/stripe/portal", { method: "POST" });
       const data = await response.json();
       
       if (response.ok && data.url) {
         window.location.href = data.url;
+      } else if (response.status === 404 && data.error?.includes("No Stripe customer")) {
+        showToast("We need to refresh your subscription. Redirecting to checkout...", "error");
+        const fallback = await fetch("/api/stripe/create-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan: billing.plan === "business" ? "business" : "pro" }),
+        });
+        const fallbackData = await fallback.json();
+        if (fallback.ok && fallbackData.url) {
+          window.location.href = fallbackData.url;
+        } else {
+          showToast(fallbackData.error || "Failed to recreate subscription", "error");
+        }
       } else if (data.configRequired) {
         showToast(
           "Stripe Customer Portal needs to be configured. Please visit Stripe Dashboard → Settings → Customer Portal",
@@ -131,18 +198,16 @@ export default function BillingPage() {
       // For new subscriptions, use checkout. For existing, use portal
       if (billing?.plan === "free") {
         // Create new subscription via checkout
-        const response = await fetch("/api/stripe/create-subscription-checkout", {
+        const response = await fetch("/api/stripe/create-checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planName, billingPeriod }),
+          body: JSON.stringify({ plan: planName }),
         });
 
         const data = await response.json();
         
-        if (response.ok && data.checkoutUrl) {
-          window.location.href = data.checkoutUrl;
-        } else if (data.redirectToPortal && data.portalUrl) {
-          window.location.href = data.portalUrl;
+        if (response.ok && data.url) {
+          window.location.href = data.url;
         } else {
           showToast(data.error || "Failed to start subscription", "error");
           setChangingPlan(false);
@@ -154,6 +219,28 @@ export default function BillingPage() {
         
         if (response.ok && data.url) {
           window.location.href = data.url;
+        } else if (response.status === 404 && data.error?.includes("No Stripe customer")) {
+          // Customer record missing – recreate via checkout
+          const checkoutResponse = await fetch("/api/stripe/create-checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ plan: planName }),
+          });
+
+          const checkoutData = await checkoutResponse.json();
+
+          if (checkoutResponse.ok && checkoutData.url) {
+            window.location.href = checkoutData.url;
+          } else {
+            showToast(checkoutData.error || "Failed to refresh subscription", "error");
+            setChangingPlan(false);
+          }
+        } else if (data.configRequired) {
+          showToast(
+            "Stripe Customer Portal needs to be configured. Please visit Stripe Dashboard → Settings → Customer Portal",
+            "error"
+          );
+          setChangingPlan(false);
         } else {
           showToast(data.error || "Failed to open billing portal", "error");
           setChangingPlan(false);

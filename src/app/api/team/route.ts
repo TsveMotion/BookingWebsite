@@ -15,6 +15,22 @@ export async function GET() {
 
     const teamMembers = await prisma.teamMember.findMany({
       where: { ownerId: userId },
+      include: {
+        member: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            locationId: true,
+            assignedLocation: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -39,7 +55,40 @@ export async function POST(request: Request) {
     await ensureUserExists(userId);
 
     const body = await request.json();
-    const { email, name } = body;
+    const { email, name, role, permissions, locationId } = body;
+
+    if (!email || !name) {
+      return NextResponse.json(
+        { error: 'Email and name are required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    // Create team member invitation
+    const teamMember = await prisma.teamMember.create({
+      data: {
+        ownerId: userId,
+        memberId: existingUser?.id || null,
+        email,
+        name,
+        role: role || 'staff',
+        permissions: permissions || {},
+        status: 'pending',
+      },
+    });
+
+    // If user exists and locationId provided, assign them to location
+    if (existingUser && locationId) {
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: { locationId },
+      });
+    }
 
     // Mark team as invited for onboarding progress
     await prisma.user.update({
@@ -47,7 +96,11 @@ export async function POST(request: Request) {
       data: { teamInvited: true },
     });
 
-    return NextResponse.json({ success: true, message: 'Invitation sent' });
+    return NextResponse.json({
+      success: true,
+      message: 'Team member invited successfully',
+      teamMember,
+    });
   } catch (error) {
     console.error('Error inviting team member:', error);
     return NextResponse.json(

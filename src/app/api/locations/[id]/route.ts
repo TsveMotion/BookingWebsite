@@ -25,7 +25,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Location ID required' }, { status: 400 });
     }
     const body = await request.json();
-    const { name, address, phone, openingHours, active } = body;
+    const { name, address, phone, manager, workingHours, active } = body;
 
     // Verify location belongs to user
     const location = await prisma.location.findFirst({
@@ -45,7 +45,8 @@ export async function PATCH(
         name: name !== undefined ? name : undefined,
         address: address !== undefined ? address : undefined,
         phone: phone !== undefined ? phone : undefined,
-        openingHours: openingHours !== undefined ? openingHours : undefined,
+        manager: manager !== undefined ? manager : undefined,
+        workingHours: workingHours !== undefined ? workingHours : undefined,
         active: active !== undefined ? active : undefined,
       },
     });

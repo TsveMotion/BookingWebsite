@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { ensureUserExists } from "@/lib/ensure-user";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -28,6 +29,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Ensure user exists with valid email
+    await ensureUserExists(userId);
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { 
@@ -36,6 +40,13 @@ export async function POST(request: Request) {
         businessName: true,
       },
     });
+
+    if (!user?.email) {
+      return NextResponse.json(
+        { error: "Unable to determine customer email address" },
+        { status: 400 }
+      );
+    }
 
     // Pricing: 500 credits = £2.99, 1000 credits = £4.95
     const price = amount === 500 ? 299 : 495; // in pence

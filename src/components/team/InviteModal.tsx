@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mail, UserPlus, Shield } from "lucide-react";
-import { useState } from "react";
+import { X, Mail, UserPlus, Shield, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface InviteModalProps {
   isOpen: boolean;
@@ -13,7 +13,9 @@ interface InviteModalProps {
 export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps) {
   const [formData, setFormData] = useState({
     email: "",
-    role: "Staff",
+    name: "",
+    role: "staff",
+    locationId: "",
     permissions: {
       manageBookings: true,
       manageClients: true,
@@ -23,6 +25,23 @@ export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps)
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [locations, setLocations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchLocations();
+    }
+  }, [isOpen]);
+
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch("/api/locations");
+      const data = await response.json();
+      setLocations(data);
+    } catch (error) {
+      console.error("Failed to fetch locations:", error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +49,7 @@ export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps)
     setLoading(true);
 
     try {
-      const response = await fetch("/api/team/invite", {
+      const response = await fetch("/api/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -43,7 +62,9 @@ export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps)
 
       setFormData({
         email: "",
-        role: "Staff",
+        name: "",
+        role: "staff",
+        locationId: "",
         permissions: {
           manageBookings: true,
           manageClients: true,
@@ -63,7 +84,9 @@ export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps)
   const handleClose = () => {
     setFormData({
       email: "",
-      role: "Staff",
+      name: "",
+      role: "staff",
+      locationId: "",
       permissions: {
         manageBookings: true,
         manageClients: true,
@@ -115,6 +138,21 @@ export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps)
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Name */}
+                <div>
+                  <label className="block text-white/80 text-sm font-semibold mb-2">
+                    Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="John Doe"
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-lavender transition-colors"
+                  />
+                </div>
+
                 {/* Email */}
                 <div>
                   <label className="block text-white/80 text-sm font-semibold mb-2">
@@ -133,19 +171,41 @@ export function InviteModal({ isOpen, onClose, onInviteSent }: InviteModalProps)
                   </div>
                 </div>
 
-                {/* Role */}
-                <div>
-                  <label className="block text-white/80 text-sm font-semibold mb-2">
-                    Role *
-                  </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors"
-                  >
-                    <option value="Staff">Staff</option>
-                    <option value="Manager">Manager</option>
-                  </select>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Role */}
+                  <div>
+                    <label className="block text-white/80 text-sm font-semibold mb-2">
+                      Role *
+                    </label>
+                    <select
+                      value={formData.role}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors"
+                    >
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                    </select>
+                  </div>
+
+                  {/* Location */}
+                  <div>
+                    <label className="block text-white/80 text-sm font-semibold mb-2">
+                      <MapPin className="w-4 h-4 inline mr-1" />
+                      Assign Location
+                    </label>
+                    <select
+                      value={formData.locationId}
+                      onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors"
+                    >
+                      <option value="">All Locations</option>
+                      {locations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Permissions */}

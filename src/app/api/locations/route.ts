@@ -23,6 +23,11 @@ export async function GET() {
             email: true,
           },
         },
+        _count: {
+          select: {
+            staff: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -70,7 +75,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, address, phone, manager, openingHours, active } = body;
+    const {
+      name,
+      address,
+      phone,
+      manager,
+      workingHours,
+      openingHours,
+      active,
+    } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -86,7 +99,12 @@ export async function POST(request: Request) {
         address: address || null,
         phone: phone || null,
         manager: manager || null,
-        openingHours: openingHours || null,
+        workingHours:
+          workingHours && Object.keys(workingHours).length > 0
+            ? workingHours
+            : openingHours && Object.keys(openingHours).length > 0
+            ? openingHours
+            : null,
         active: active !== undefined ? active : true,
       },
     });

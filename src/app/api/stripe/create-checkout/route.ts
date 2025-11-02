@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { stripe } from '@/lib/stripe-server';
 import { prisma } from '@/lib/prisma';
 
-const PLAN_PRICES = {
-  starter: process.env.STRIPE_PRICE_STARTER!,
+const PLAN_PRICES: Record<'pro' | 'business', string> = {
   pro: process.env.STRIPE_PRICE_PRO!,
   business: process.env.STRIPE_PRICE_BUSINESS!,
 };
@@ -18,7 +17,8 @@ export async function POST(request: Request) {
 
     const { plan } = await request.json();
 
-    if (!plan || !['starter', 'pro', 'business'].includes(plan)) {
+    const allowedPlans = ['pro', 'business'] as const;
+    if (!plan || !allowedPlans.includes(plan)) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
@@ -30,12 +30,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    let customerEmail = user.email?.trim();
+
+    if (!customerEmail) {
+      try {
+        const clerk = await clerkClient();
+        const clerkUser = await clerk.users.getUser(userId);
+        type ClerkEmail = (typeof clerkUser.emailAddresses)[number];
+
+        const primaryEmail = clerkUser.emailAddresses.find(
+          (address: ClerkEmail) => address.id === clerkUser.primaryEmailAddressId
+        )?.emailAddress;
+
+        customerEmail =
+          primaryEmail ||
+          clerkUser.primaryEmailAddress?.emailAddress ||
+          clerkUser.emailAddresses[0]?.emailAddress ||
+          '';
+      } catch (error) {
+        console.error('Failed to fetch email from Clerk:', error);
+      }
+    }
+
+    if (!customerEmail) {
+      return NextResponse.json({ error: 'Unable to determine customer email address' }, { status: 400 });
+    }
+
     // Create Stripe Checkout session for subscription
+    const planKey = plan as (typeof allowedPlans)[number];
+    const priceId = PLAN_PRICES[planKey];
+
+    if (!priceId) {
+      return NextResponse.json({ error: 'Selected plan is not configured.' }, { status: 400 });
+    }
+
     const session = await stripe.checkout.sessions.create({
-      customer_email: user.email,
+      customer_email: customerEmail,
       line_items: [
         {
-          price: PLAN_PRICES[plan as keyof typeof PLAN_PRICES],
+          price: priceId,
           quantity: 1,
         },
       ],
