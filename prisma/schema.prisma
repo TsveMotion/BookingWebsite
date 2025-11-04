@@ -96,24 +96,22 @@ model StripeProduct {
 }
 
 model Service {
-  id          String         @id @default(cuid())
+  id          String            @id @default(cuid())
   userId      String
-  locationId  String?
   name        String
-  description String?        @db.Text
+  description String?           @db.Text
   duration    Int
   price       Float
   category    String?
-  active      Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   bookings    Booking[]
   addons      ServiceAddon[]
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  location    Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locations   ServiceLocation[] // Many-to-many relation
 
   @@index([userId])
-  @@index([locationId])
 }
 
 model ServiceAddon {
@@ -123,10 +121,26 @@ model ServiceAddon {
   description String?  @db.Text
   extraTime   Int
   extraPrice  Float
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@index([serviceId])
+}
+
+// Junction table for many-to-many Service-Location relationship
+model ServiceLocation {
+  id         String   @id @default(cuid())
+  serviceId  String
+  locationId String
+  active     Boolean  @default(true) // Can disable service at specific location
+  createdAt  DateTime @default(now())
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, locationId]) // Prevent duplicate assignments
+  @@index([serviceId])
+  @@index([locationId])
 }
 
 model Booking {
@@ -244,19 +258,19 @@ model TeamMember {
 }
 
 model Location {
-  id           String    @id @default(cuid())
+  id           String            @id @default(cuid())
   ownerId      String
   name         String
   address      String?
   phone        String?
   manager      String?
-  workingHours Json?     // Working hours per day: {"monday": {"open": "09:00", "close": "17:00", "closed": false}, ...}
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  owner        User      @relation("LocationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  staff        User[]    @relation("LocationStaff")
-  services     Service[]
+  workingHours Json?             // Working hours per day: {"monday": {"open": "09:00", "close": "17:00", "closed": false}, ...}
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  owner        User              @relation("LocationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  staff        User[]            @relation("LocationStaff")
+  services     ServiceLocation[] // Many-to-many relation
 
   @@index([ownerId])
   @@index([active])

@@ -86,8 +86,8 @@ async function fetchInvoicesData(userId: string) {
         amount: purchase.amount,
         currency: purchase.currency.toUpperCase(),
         status: "paid",
-        invoiceUrl: null,
-        invoicePdf: null,
+        invoiceUrl: `/api/billing/sms-receipt/${purchase.id}`,
+        invoicePdf: `/api/billing/sms-receipt/${purchase.id}?download=true`,
       })),
     ];
 

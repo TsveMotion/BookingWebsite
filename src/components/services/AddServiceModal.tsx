@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Scissors, Clock, DollarSign } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface AddServiceModalProps {
   isOpen: boolean;
@@ -13,15 +13,41 @@ interface AddServiceModalProps {
 
 export function AddServiceModal({ isOpen, onClose, onServiceAdded, editService }: AddServiceModalProps) {
   const [formData, setFormData] = useState({
-    name: editService?.name || "",
-    description: editService?.description || "",
-    duration: editService?.duration || 60,
-    price: editService?.price || 0,
-    category: editService?.category || "",
-    active: editService?.active ?? true,
+    name: "",
+    description: "",
+    duration: 60,
+    price: 0,
+    category: "",
+    active: true,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Update form data when editService changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (editService) {
+        setFormData({
+          name: editService.name || "",
+          description: editService.description || "",
+          duration: editService.duration || 60,
+          price: editService.price || 0,
+          category: editService.category || "",
+          active: editService.active ?? true,
+        });
+      } else {
+        setFormData({
+          name: "",
+          description: "",
+          duration: 60,
+          price: 0,
+          category: "",
+          active: true,
+        });
+      }
+      setError("");
+    }
+  }, [isOpen, editService]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

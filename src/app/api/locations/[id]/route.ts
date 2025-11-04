@@ -1,10 +1,64 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
 type RouteContext = {
   params: Promise<Record<string, string | string[] | undefined>>;
 };
+
+export async function GET(
+  request: Request,
+  context: RouteContext
+) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const params = await context.params;
+    const rawId = params?.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Location ID required' }, { status: 400 });
+    }
+
+    // Get the effective owner ID
+    const ownerId = await getBusinessOwnerId(userId);
+
+    // Fetch location with staff details
+    const location = await prisma.location.findFirst({
+      where: {
+        id,
+        ownerId,
+      },
+      include: {
+        staff: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!location) {
+      return NextResponse.json({ error: 'Location not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(location);
+  } catch (error) {
+    console.error('Error fetching location:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch location' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function PATCH(
   request: Request,

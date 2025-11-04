@@ -17,6 +17,8 @@ import {
   AlertTriangle,
   TrendingUp,
   Zap,
+  Wallet,
+  Building2,
 } from "lucide-react";
 import useSWR from "swr";
 import Link from "next/link";
@@ -72,6 +74,9 @@ export default function BillingPage() {
     revalidateOnFocus: false, // Don't refetch on window focus by default
   });
   const { data: invoices, error: invoicesError, mutate: mutateInvoices } = useSWR<BillingHistoryItem[]>("/api/billing/invoices", fetcher, {
+    revalidateOnFocus: false,
+  });
+  const { data: connectStatus } = useSWR<any>("/api/billing/connect-status", fetcher, {
     revalidateOnFocus: false,
   });
 
@@ -589,6 +594,123 @@ export default function BillingPage() {
             </div>
           </div>
         )}
+
+        {/* Stripe Connect - Payment Account */}
+        <div className="glass-card p-6 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl">
+              <Wallet className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">Payment Account</h2>
+              <p className="text-white/60 text-sm">Receive payments from client bookings</p>
+            </div>
+          </div>
+
+          {connectStatus?.connected ? (
+            <div className="space-y-4">
+              {/* Account Status */}
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <p className="text-white/60 text-sm mb-1">Total Earnings</p>
+                  <p className="text-2xl font-bold text-white">
+                    £{((connectStatus.totalEarnings || 0) / 100).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-white/40 mt-1">From all bookings</p>
+                </div>
+
+                <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <p className="text-white/60 text-sm mb-1">Available Balance</p>
+                  <p className="text-2xl font-bold text-green-400">
+                    £{((connectStatus.availableBalance || 0) / 100).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-white/40 mt-1">Ready for payout</p>
+                </div>
+
+                <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <p className="text-white/60 text-sm mb-1">Account Status</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {connectStatus.chargesEnabled ? (
+                      <>
+                        <CheckCircle className="w-5 h-5 text-green-400" />
+                        <span className="text-green-400 font-semibold">Active</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                        <span className="text-yellow-400 font-semibold">Setup Required</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-white/40 mt-1">
+                    {connectStatus.payoutsEnabled ? 'Payouts enabled' : 'Complete setup for payouts'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Account Info */}
+              <div className="p-4 bg-gradient-to-br from-blue-400/10 to-indigo-500/10 rounded-xl border border-blue-400/20">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 className="w-4 h-4 text-blue-400" />
+                      <p className="text-white font-semibold">Stripe Connect Account</p>
+                    </div>
+                    <p className="text-white/60 text-sm mb-1">
+                      {connectStatus.email || 'Account connected'}
+                    </p>
+                    <p className="text-white/40 text-xs">
+                      Account ID: {connectStatus.accountId?.slice(0, 20)}...
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      href="/dashboard/payouts"
+                      className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 font-semibold rounded-lg transition-all text-sm border border-blue-500/30"
+                    >
+                      View Payouts
+                    </Link>
+                    <a
+                      href="/dashboard/settings"
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-all text-sm"
+                    >
+                      Manage Account
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Notice */}
+              <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <p className="text-white/60 text-sm">
+                  💡 <strong className="text-white">0% commission:</strong> GlamBooking charges no fees on bookings. 
+                  Only standard Stripe processing fees (1.5% + 20p for UK cards) apply. 
+                  Funds are automatically transferred to your bank account within 2-3 business days.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Wallet className="w-8 h-8 text-blue-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Connect Your Bank Account</h3>
+              <p className="text-white/60 mb-6 max-w-md mx-auto">
+                Set up your Stripe account to receive payments from client bookings directly to your bank account.
+              </p>
+              <Link
+                href="/dashboard/settings"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-luxury-gradient hover:opacity-90 text-white font-semibold rounded-lg transition-all"
+              >
+                <Building2 className="w-5 h-5" />
+                Connect Bank Account
+              </Link>
+              <p className="text-white/40 text-xs mt-4">
+                Secure setup powered by Stripe Connect
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Billing History */}
         <div className="glass-card p-6">

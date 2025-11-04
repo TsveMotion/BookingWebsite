@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { Scissors, Plus, Trash2, Edit2, Crown, Lock, Clock, Tag } from "lucide-react";
+import { Scissors, Plus, Trash2, Edit2, Crown, Lock, Clock, Tag, MapPin } from "lucide-react";
 import { AddServiceModal } from "@/components/services/AddServiceModal";
 import { AddonsModal } from "@/components/services/AddonsModal";
+import { ManageLocationsModal } from "@/components/services/ManageLocationsModal";
 
 interface Service {
   id: string;
@@ -24,6 +25,7 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddonsModal, setShowAddonsModal] = useState(false);
+  const [showLocationsModal, setShowLocationsModal] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [userPlan, setUserPlan] = useState("free");
@@ -216,9 +218,23 @@ export default function ServicesPage() {
                     <span className="text-sm">{service.duration} mins</span>
                   </div>
                   <span className="text-2xl font-bold text-white">
-                    £{service.price.toFixed(2)}
+                    £{typeof service.price === 'number' ? service.price.toFixed(2) : parseFloat(service.price || '0').toFixed(2)}
                   </span>
                 </div>
+
+                {/* Manage Locations Button */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setSelectedService(service);
+                    setShowLocationsModal(true);
+                  }}
+                  className="w-full px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-lavender/20 text-white hover:bg-lavender/30 border border-lavender/30 mb-2"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Manage Locations
+                </motion.button>
 
                 {/* Add-ons Button (Pro Feature) */}
                 <div className="relative group/addons">
@@ -234,7 +250,7 @@ export default function ServicesPage() {
                     }`}
                   >
                     <Tag className="w-4 h-4" />
-                    Add-ons
+                    Add-ons {service.addons && service.addons.length > 0 && `(${service.addons.length})`}
                     {!isPro && <Crown className="w-3 h-3 text-yellow-400" />}
                   </motion.button>
                   {!isPro && (
@@ -270,6 +286,16 @@ export default function ServicesPage() {
         serviceId={selectedService?.id || ""}
         serviceName={selectedService?.name || ""}
         userPlan={userPlan}
+      />
+
+      <ManageLocationsModal
+        isOpen={showLocationsModal}
+        onClose={() => {
+          setShowLocationsModal(false);
+          setSelectedService(null);
+        }}
+        serviceId={selectedService?.id || ""}
+        serviceName={selectedService?.name || ""}
       />
     </div>
   );

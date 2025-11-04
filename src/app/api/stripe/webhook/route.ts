@@ -378,7 +378,7 @@ export async function POST(request: Request) {
                 stripeSubscriptionId: subscription.id,
                 subscriptionStatus: subscription.status,
                 plan: planName,
-                smsCredits: smsCredits,
+                smsCredits: { increment: smsCredits }, // ADD to existing balance, don't overwrite
                 smsCreditsUsed: 0,
                 smsCreditsRenewDate: new Date(),
               },

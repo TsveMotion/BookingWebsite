@@ -79,7 +79,6 @@ CREATE TABLE "StripeProduct" (
 CREATE TABLE "Service" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "locationId" TEXT,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "duration" INTEGER NOT NULL,
@@ -100,9 +99,21 @@ CREATE TABLE "ServiceAddon" (
     "description" TEXT,
     "extraTime" INTEGER NOT NULL,
     "extraPrice" DOUBLE PRECISION NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ServiceAddon_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ServiceLocation" (
+    "id" TEXT NOT NULL,
+    "serviceId" TEXT NOT NULL,
+    "locationId" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ServiceLocation_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -388,10 +399,16 @@ CREATE UNIQUE INDEX "StripeProduct_planName_billingPeriod_key" ON "StripeProduct
 CREATE INDEX "Service_userId_idx" ON "Service"("userId");
 
 -- CreateIndex
-CREATE INDEX "Service_locationId_idx" ON "Service"("locationId");
+CREATE INDEX "ServiceAddon_serviceId_idx" ON "ServiceAddon"("serviceId");
 
 -- CreateIndex
-CREATE INDEX "ServiceAddon_serviceId_idx" ON "ServiceAddon"("serviceId");
+CREATE INDEX "ServiceLocation_serviceId_idx" ON "ServiceLocation"("serviceId");
+
+-- CreateIndex
+CREATE INDEX "ServiceLocation_locationId_idx" ON "ServiceLocation"("locationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ServiceLocation_serviceId_locationId_key" ON "ServiceLocation"("serviceId", "locationId");
 
 -- CreateIndex
 CREATE INDEX "Booking_userId_idx" ON "Booking"("userId");
@@ -541,10 +558,13 @@ ALTER TABLE "Client" ADD CONSTRAINT "Client_userId_fkey" FOREIGN KEY ("userId") 
 ALTER TABLE "Service" ADD CONSTRAINT "Service_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Service" ADD CONSTRAINT "Service_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "Location"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ServiceAddon" ADD CONSTRAINT "ServiceAddon_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ServiceAddon" ADD CONSTRAINT "ServiceAddon_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ServiceLocation" ADD CONSTRAINT "ServiceLocation_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ServiceLocation" ADD CONSTRAINT "ServiceLocation_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "Location"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE ON UPDATE CASCADE;

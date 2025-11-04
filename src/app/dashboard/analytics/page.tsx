@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { DollarSign, Calendar, Users, TrendingUp, Download, BarChart3, PieChart, Activity } from "lucide-react";
+import { DollarSign, Calendar, Users, TrendingUp, Download, BarChart3, PieChart, Activity, LineChart as LineChartIcon } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { PlanLock } from "@/components/analytics/PlanLock";
 import { KpiCard } from "@/components/analytics/KpiCard";
@@ -136,6 +136,39 @@ export default function AnalyticsPage() {
         feature="Advanced Analytics" 
         requiredPlan="Pro"
         description="Unlock powerful insights to track revenue, bookings, client trends, and more. Make data-driven decisions to grow your business."
+        pricing="£19.99/month"
+        features={[
+          {
+            icon: BarChart3,
+            title: "Revenue & Booking Analytics",
+            description: "Track your revenue trends, booking volumes, and growth metrics over time with beautiful interactive charts.",
+          },
+          {
+            icon: LineChartIcon,
+            title: "Performance Trends",
+            description: "Visualize your business performance with area charts, bar graphs, and trend analysis over custom date ranges.",
+          },
+          {
+            icon: PieChart,
+            title: "Service Mix Analysis",
+            description: "See which services drive the most revenue and bookings with detailed pie charts and breakdowns.",
+          },
+          {
+            icon: Users,
+            title: "Client Growth Insights",
+            description: "Monitor new client acquisition rates and track customer lifetime value with comprehensive analytics.",
+          },
+          {
+            icon: TrendingUp,
+            title: "KPI Dashboard",
+            description: "Get instant insights into your key metrics including average booking value, client retention, and revenue growth.",
+          },
+          {
+            icon: Download,
+            title: "Export & Reports",
+            description: "Download detailed CSV reports for deeper analysis and integrate with your accounting systems.",
+          },
+        ]}
       />
     );
   }

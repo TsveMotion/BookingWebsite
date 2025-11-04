@@ -52,15 +52,29 @@ async function fetchBillingData(userId: string) {
     });
 
     if (!user?.stripeCustomerId) {
-      return NextResponse.json({
-        plan: user?.plan || "free",
+      // No Stripe customer = definitely free plan
+      // Sync database if it's out of sync
+      if (user?.plan && user.plan !== "free") {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { plan: "free", subscriptionStatus: "inactive" },
+        });
+      }
+      
+      return {
+        plan: "free",
+        planDisplayName: "Free",
         status: "inactive",
         nextBillingDate: null,
         amountDue: 0,
+        currency: "gbp",
         paymentMethod: null,
+        interval: "month",
         smsCredits: user?.smsCredits || 0,
         smsCreditsUsed: user?.smsCreditsUsed || 0,
-      });
+        cancelAtPeriodEnd: false,
+        cancelAt: null,
+      };
     }
 
     // Fetch active subscriptions
@@ -74,6 +88,36 @@ async function fetchBillingData(userId: string) {
     const activeSubscription = subscriptions.data.find(
       (s) => s.status === "active" || s.status === "trialing"
     );
+
+    // NO ACTIVE SUBSCRIPTION = FREE PLAN (regardless of what's in the database)
+    if (!activeSubscription) {
+      // Sync database to reflect reality
+      if (user.plan !== "free" || user.subscriptionStatus !== "inactive") {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { 
+            plan: "free", 
+            subscriptionStatus: "inactive",
+            stripeSubscriptionId: null,
+          },
+        });
+      }
+      
+      return {
+        plan: "free",
+        planDisplayName: "Free",
+        status: "inactive",
+        nextBillingDate: null,
+        amountDue: 0,
+        currency: "gbp",
+        paymentMethod: null,
+        interval: "month",
+        smsCredits: user.smsCredits || 0,
+        smsCreditsUsed: user.smsCreditsUsed || 0,
+        cancelAtPeriodEnd: false,
+        cancelAt: null,
+      };
+    }
 
     let paymentMethodDetails = null;
 
@@ -89,32 +133,51 @@ async function fetchBillingData(userId: string) {
       }
     }
 
-    // Get friendly plan name
-    let planName = user.plan || "free";
+    // Derive plan from ACTIVE subscription (not from database)
+    let planName = "free";
     let planDisplayName = "Free";
     
-    if (activeSubscription) {
-      const priceItem = activeSubscription.items.data[0];
-      const priceNickname = priceItem.price.nickname;
-      const interval = priceItem.price.recurring?.interval;
+    // Extract plan from the active subscription
+    const priceItem = activeSubscription.items.data[0];
+    const priceNickname = priceItem.price.nickname;
+    const interval = priceItem.price.recurring?.interval;
+    const priceId = priceItem.price.id;
+    
+    // Determine plan from price ID or nickname
+    if (priceNickname?.toLowerCase().includes('business')) {
+      planName = 'business';
+      planDisplayName = `Business Plan (${interval === 'year' ? 'Yearly' : 'Monthly'})`;
+    } else if (priceNickname?.toLowerCase().includes('pro')) {
+      planName = 'pro';
+      planDisplayName = `Pro Plan (${interval === 'year' ? 'Yearly' : 'Monthly'})`;
+    } else {
+      // Fallback: check price metadata or product
+      const price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+      const product = price.product as Stripe.Product;
       
-      // Use nickname if available, otherwise derive from user.plan
-      if (priceNickname) {
-        planDisplayName = priceNickname;
-      } else if (user.plan) {
-        const planLower = user.plan.toLowerCase();
-        const billingType = interval === 'year' ? '(Yearly)' : '(Monthly)';
-        
-        if (planLower.includes('pro')) {
-          planDisplayName = `Pro Plan ${billingType}`;
-          planName = 'pro';
-        } else if (planLower.includes('business')) {
-          planDisplayName = `Business Plan ${billingType}`;
-          planName = 'business';
-        } else {
-          planDisplayName = user.plan;
-        }
+      if (product.name?.toLowerCase().includes('business')) {
+        planName = 'business';
+        planDisplayName = `Business Plan (${interval === 'year' ? 'Yearly' : 'Monthly'})`;
+      } else if (product.name?.toLowerCase().includes('pro')) {
+        planName = 'pro';
+        planDisplayName = `Pro Plan (${interval === 'year' ? 'Yearly' : 'Monthly'})`;
+      } else {
+        // Final fallback
+        planDisplayName = priceNickname || product.name || 'Pro Plan';
+        planName = 'pro';
       }
+    }
+    
+    // Sync database with Stripe subscription state
+    if (user.plan !== planName || user.subscriptionStatus !== activeSubscription.status) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          plan: planName,
+          subscriptionStatus: activeSubscription.status,
+          stripeSubscriptionId: activeSubscription.id,
+        },
+      });
     }
 
     return {
