@@ -74,13 +74,13 @@ export async function POST(request: Request) {
     end.setMinutes(end.getMinutes() + service.duration);
 
     // Create pending booking
-    // Note: locationId and staffId will be added after running: npx prisma generate
     const booking = await prisma.booking.create({
       data: {
         userId: business.id,
         clientId: client.id,
         serviceId,
-        // staffId, // Uncomment after: npx prisma generate
+        locationId: locationId || null,
+        staffId: staffId || null,
         startTime: start,
         endTime: end,
         totalAmount,

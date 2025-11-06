@@ -8,12 +8,31 @@ import Calendar from "@/components/ui/Calendar";
 import TimeSlotPicker from "@/components/ui/TimeSlotPicker";
 import BookingProgress from "@/components/ui/BookingProgress";
 
+interface Location {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  workingHours?: any;
+}
+
+interface ServiceAddon {
+  id: string;
+  name: string;
+  description?: string;
+  extraTime: number;
+  extraPrice: number;
+}
+
 interface Service {
   id: string;
   name: string;
   description?: string;
   duration: number;
   price: number;
+  category?: string;
+  locations?: Location[];
+  addons?: ServiceAddon[];
 }
 
 interface Business {
@@ -26,6 +45,7 @@ interface Business {
   logoUrl?: string;
   plan?: string;
   services: Service[];
+  ownedLocations?: Location[];
 }
 
 interface StaffMember {
@@ -45,6 +65,8 @@ export default function PublicBookingPage() {
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -59,7 +81,7 @@ export default function PublicBookingPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const steps = ["Service", "Staff", "Date", "Time", "Details", "Review"];
+  const steps = ["Service", "Location", "Staff", "Date", "Time", "Details", "Review"];
 
   useEffect(() => {
     fetchBusiness();
@@ -150,6 +172,7 @@ export default function PublicBookingPage() {
         body: JSON.stringify({
           businessSlug,
           serviceId: selectedService.id,
+          locationId: selectedLocation?.id,
           clientName: formData.clientName,
           clientEmail: formData.clientEmail,
           clientPhone: formData.clientPhone,
@@ -176,11 +199,16 @@ export default function PublicBookingPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 0: return selectedService !== null;
-      case 1: return selectedStaff !== null || staffList.length === 0;
-      case 2: return selectedDate !== null;
-      case 3: return selectedTime !== null;
-      case 4: return formData.clientName && formData.clientEmail;
-      case 5: return true;
+      case 1: {
+        // Skip location step if no locations available
+        const hasLocations = selectedService?.locations && selectedService.locations.length > 0;
+        return !hasLocations || selectedLocation !== null;
+      }
+      case 2: return selectedStaff !== null || staffList.length === 0;
+      case 3: return selectedDate !== null;
+      case 4: return selectedTime !== null;
+      case 5: return formData.clientName && formData.clientEmail;
+      case 6: return true;
       default: return false;
     }
   };
@@ -211,8 +239,8 @@ export default function PublicBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black pt-24">
+      <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col items-center justify-center">
         {/* Business Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -291,14 +319,109 @@ export default function PublicBookingPage() {
                         <Clock className="w-4 h-4" />
                         {service.duration} minutes
                       </div>
+                      
+                      {/* Show add-ons when service is selected */}
+                      {selectedService?.id === service.id && service.addons && service.addons.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                          <p className="text-sm font-semibold text-white/80 mb-3">Available Add-ons:</p>
+                          <div className="space-y-2">
+                            {service.addons.map((addon) => (
+                              <label
+                                key={addon.id}
+                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedAddons.includes(addon.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedAddons([...selectedAddons, addon.id]);
+                                    } else {
+                                      setSelectedAddons(selectedAddons.filter(id => id !== addon.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded border-white/20 bg-white/10 text-lavender focus:ring-lavender"
+                                />
+                                <div className="flex-1">
+                                  <p className="text-sm text-white font-medium">{addon.name}</p>
+                                  {addon.description && (
+                                    <p className="text-xs text-white/60">{addon.description}</p>
+                                  )}
+                                  <p className="text-xs text-white/50">+{addon.extraTime} min</p>
+                                </div>
+                                <span className="text-sm font-semibold text-lavender">+£{addon.extraPrice}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   ))}
                 </div>
               </motion.div>
             )}
 
-            {/* Step 1: Select Staff */}
+            {/* Step 1: Select Location */}
             {currentStep === 1 && (
+              <motion.div
+                key="location"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <h2 className="text-2xl font-bold text-white mb-6">Select a Location</h2>
+                {selectedService?.locations && selectedService.locations.length > 0 ? (
+                  <div className="space-y-4">
+                    {selectedService.locations.map((location) => (
+                      <motion.div
+                        key={location.id}
+                        whileHover={{ scale: 1.02 }}
+                        onClick={() => setSelectedLocation(location)}
+                        className={`p-6 rounded-xl cursor-pointer transition-all ${
+                          selectedLocation?.id === location.id
+                            ? "bg-gradient-to-br from-lavender/20 to-blush/20 ring-2 ring-lavender"
+                            : "bg-white/5 hover:bg-white/10 border border-white/10"
+                        }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 bg-lavender/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <MapPin className="w-6 h-6 text-lavender" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-xl font-semibold text-white mb-2">{location.name}</h3>
+                            {location.address && (
+                              <p className="text-white/70 text-sm mb-1 flex items-center gap-2">
+                                <MapPin className="w-4 h-4" />
+                                {location.address}
+                              </p>
+                            )}
+                            {location.phone && (
+                              <p className="text-white/70 text-sm flex items-center gap-2">
+                                <Phone className="w-4 h-4" />
+                                {location.phone}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-white/60">No location selection needed</p>
+                    <button
+                      onClick={handleNext}
+                      className="mt-4 px-6 py-3 bg-luxury-gradient rounded-xl text-white font-semibold"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Step 2: Select Staff */}
+            {currentStep === 2 && (
               <motion.div
                 key="staff"
                 initial={{ opacity: 0, x: 20 }}
@@ -345,8 +468,8 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
 
-            {/* Step 2: Select Date */}
-            {currentStep === 2 && (
+            {/* Step 3: Select Date */}
+            {currentStep === 3 && (
               <motion.div
                 key="date"
                 initial={{ opacity: 0, x: 20 }}
@@ -363,8 +486,8 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
 
-            {/* Step 3: Select Time */}
-            {currentStep === 3 && (
+            {/* Step 4: Select Time */}
+            {currentStep === 4 && (
               <motion.div
                 key="time"
                 initial={{ opacity: 0, x: 20 }}
@@ -381,8 +504,8 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
 
-            {/* Step 4: Client Details */}
-            {currentStep === 4 && (
+            {/* Step 5: Client Details */}
+            {currentStep === 5 && (
               <motion.div
                 key="details"
                 initial={{ opacity: 0, x: 20 }}
@@ -441,8 +564,8 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
 
-            {/* Step 5: Review & Confirm */}
-            {currentStep === 5 && (
+            {/* Step 6: Review & Confirm */}
+            {currentStep === 6 && (
               <motion.div
                 key="review"
                 initial={{ opacity: 0, x: 20 }}
@@ -458,6 +581,33 @@ export default function PublicBookingPage() {
                     </div>
                     <p className="text-2xl font-bold text-lavender">£{selectedService?.price}</p>
                   </div>
+                  
+                  {/* Selected Add-ons */}
+                  {selectedAddons.length > 0 && selectedService?.addons && (
+                    <div>
+                      <p className="text-white/60 text-sm mb-2">Add-ons</p>
+                      {selectedAddons.map(addonId => {
+                        const addon = selectedService.addons?.find(a => a.id === addonId);
+                        if (!addon) return null;
+                        return (
+                          <div key={addon.id} className="flex justify-between text-sm mb-1">
+                            <span className="text-white/80">+ {addon.name}</span>
+                            <span className="text-white font-semibold">£{addon.extraPrice}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {selectedLocation && (
+                    <div>
+                      <p className="text-white/60 text-sm">Location</p>
+                      <p className="text-white font-semibold">{selectedLocation.name}</p>
+                      {selectedLocation.address && (
+                        <p className="text-white/60 text-xs mt-1">{selectedLocation.address}</p>
+                      )}
+                    </div>
+                  )}
                   
                   {selectedStaff && (
                     <div>

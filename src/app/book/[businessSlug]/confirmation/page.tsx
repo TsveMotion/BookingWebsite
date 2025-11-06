@@ -16,6 +16,8 @@ export default function BookingConfirmationPage() {
   const [booking, setBooking] = useState<any>(null);
   const [business, setBusiness] = useState<any>(null);
   const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceError, setInvoiceError] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
 
@@ -43,11 +45,22 @@ export default function BookingConfirmationPage() {
 
       // Fetch invoice if session ID exists
       if (sessionId) {
-        const invoiceRes = await fetch(`/api/invoices?session_id=${sessionId}`);
-        if (invoiceRes.ok) {
-          const invoiceData = await invoiceRes.json();
-          setInvoiceUrl(invoiceData.pdfUrl);
-          setBooking(invoiceData.booking);
+        setInvoiceLoading(true);
+        try {
+          const invoiceRes = await fetch(`/api/invoices?session_id=${sessionId}`);
+          if (invoiceRes.ok) {
+            const invoiceData = await invoiceRes.json();
+            setInvoiceUrl(invoiceData.pdfUrl);
+            setBooking(invoiceData.booking);
+          } else {
+            console.warn('Invoice not yet available, will retry...');
+            setInvoiceError(true);
+          }
+        } catch (error) {
+          console.error('Failed to fetch invoice:', error);
+          setInvoiceError(true);
+        } finally {
+          setInvoiceLoading(false);
         }
       }
 
@@ -118,23 +131,53 @@ export default function BookingConfirmationPage() {
             Your payment has been processed successfully. You&apos;ll receive a confirmation email shortly.
           </motion.p>
 
-          {/* Invoice Link */}
-          {invoiceUrl && (
-            <motion.a
-              href={invoiceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+          {/* Invoice Section */}
+          {invoiceLoading ? (
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.45 }}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 transition-all mb-8"
+              className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8 text-center"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              View Your Invoice
-            </motion.a>
-          )}
+              <div className="animate-pulse flex items-center justify-center gap-3">
+                <div className="w-5 h-5 border-2 border-lavender border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-white/70">Generating your invoice...</p>
+              </div>
+            </motion.div>
+          ) : invoiceUrl ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              className="mb-8"
+            >
+              <a
+                href={invoiceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-br from-lavender/20 to-blush/20 border border-lavender/30 rounded-xl text-white hover:border-lavender/50 hover:shadow-lg hover:shadow-lavender/20 transition-all group"
+              >
+                <div className="w-10 h-10 bg-lavender/20 rounded-lg flex items-center justify-center group-hover:bg-lavender/30 transition-colors">
+                  <svg className="w-6 h-6 text-lavender" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-lg">Download Invoice</p>
+                  <p className="text-sm text-white/60">View or print your receipt</p>
+                </div>
+              </a>
+            </motion.div>
+          ) : invoiceError ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-8 text-center"
+            >
+              <p className="text-amber-300 text-sm">Invoice is being generated. Check your email for the receipt.</p>
+            </motion.div>
+          ) : null}
 
           {/* Booking Details Card */}
           <motion.div

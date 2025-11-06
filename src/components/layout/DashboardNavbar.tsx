@@ -45,7 +45,7 @@ export default function DashboardNavbar() {
       : "/logo/Logo_Long.png";
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-md bg-black/40 border-b-2 border-b-white/10 shadow-lg">
+    <nav className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-black/40 border-b-2 border-b-white/10 shadow-lg">
       {/* Gradient accent border */}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 opacity-60"></div>
       
@@ -61,7 +61,7 @@ export default function DashboardNavbar() {
                 alt="GlamBooking Logo"
                 width={140}
                 height={36}
-                className="object-contain hover:opacity-90 transition-opacity"
+                className="object-contain"
               />
             )}
           </Link>
@@ -84,7 +84,7 @@ export default function DashboardNavbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`hover:text-pink-400 transition-all duration-200 relative after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-gradient-to-r after:from-pink-400 after:to-purple-400 after:left-0 after:-bottom-1 hover:after:w-full after:transition-all ${
+                className={`hover:text-pink-400 relative after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-gradient-to-r after:from-pink-400 after:to-purple-400 after:left-0 after:-bottom-1 hover:after:w-full ${
                   isActive ? "text-pink-400 after:w-full" : ""
                 }`}
               >
@@ -117,7 +117,7 @@ export default function DashboardNavbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`whitespace-nowrap text-sm font-medium transition-all duration-200 relative px-3 py-1 rounded-full ${
+                className={`whitespace-nowrap text-sm font-medium relative px-3 py-1 rounded-full ${
                   isActive ? "text-pink-400 bg-pink-400/10" : "text-gray-300 hover:text-pink-400 hover:bg-white/5"
                 }`}
               >
