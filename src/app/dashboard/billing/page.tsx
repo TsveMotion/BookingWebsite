@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import useSWR from "swr";
 import Link from "next/link";
+import { showToast } from "@/lib/toast";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -65,7 +66,6 @@ export default function BillingPage() {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [changingPlan, setChangingPlan] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const searchParams = useSearchParams();
 
@@ -85,7 +85,7 @@ export default function BillingPage() {
     const success = searchParams.get('success');
     if (success === 'true') {
       console.log('🔄 Returned from successful payment - forcing data refresh');
-      showToast('Payment successful! Updating your account...', 'success');
+      showToast.success('Payment successful! Updating your account...');
       
       // Webhook might still be processing, so retry with delays
       const refetchWithRetry = async (attempt = 1, maxAttempts = 5) => {
@@ -103,7 +103,7 @@ export default function BillingPage() {
         if ((planName && planName !== 'free') || attempt >= maxAttempts) {
           console.log('✅ Plan updated successfully:', planName || 'unknown');
           const friendlyPlan = planName ? planName.toUpperCase() : 'PRO';
-          showToast(`Welcome to ${friendlyPlan}! Your subscription is active.`, 'success');
+          showToast.success(`Welcome to ${friendlyPlan}! Your subscription is active.`);
           
           // Clean up URL
           setTimeout(() => {
@@ -125,7 +125,7 @@ export default function BillingPage() {
     if (!billing) return;
 
     if (!billing.plan || billing.plan === "free") {
-      showToast("Upgrade to Pro or Business to add payment methods.", "error");
+      showToast.error("Upgrade to Pro or Business to add payment methods.");
       setShowChangePlanModal(true);
       return;
     }
@@ -137,7 +137,7 @@ export default function BillingPage() {
       if (response.ok && data.url) {
         window.location.href = data.url;
       } else if (response.status === 404 && data.error?.includes("No Stripe customer")) {
-        showToast("We need to refresh your subscription. Redirecting to checkout...", "error");
+        showToast.error("We need to refresh your subscription. Redirecting to checkout...");
         const fallback = await fetch("/api/stripe/create-checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -147,30 +147,24 @@ export default function BillingPage() {
         if (fallback.ok && fallbackData.url) {
           window.location.href = fallbackData.url;
         } else {
-          showToast(fallbackData.error || "Failed to recreate subscription", "error");
+          showToast.error(fallbackData.error || "Failed to recreate subscription");
         }
       } else if (data.configRequired) {
-        showToast(
-          "Stripe Customer Portal needs to be configured. Please visit Stripe Dashboard → Settings → Customer Portal",
-          "error"
+        showToast.error(
+          "Stripe Customer Portal needs to be configured. Please visit Stripe Dashboard → Settings → Customer Portal"
         );
       } else {
-        showToast(data.error || "Failed to open billing portal", "error");
+        showToast.error(data.error || "Failed to open billing portal");
       }
     } catch (error) {
       console.error("Failed to open billing portal:", error);
-      showToast("Failed to open billing portal. Please try again.", "error");
+      showToast.error("Failed to open billing portal. Please try again.");
     }
-  };
-
-  const showToast = (message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 5000);
   };
 
   const handleBuySmsCredits = async (amount: number) => {
     if (billing?.plan === "free") {
-      showToast("SMS credits require Pro or Business plan. Please upgrade first!", "error");
+      showToast.error("SMS credits require Pro or Business plan. Please upgrade first!");
       return;
     }
 
@@ -186,19 +180,19 @@ export default function BillingPage() {
       if (response.ok && data.url) {
         window.location.href = data.url;
       } else {
-        showToast("Failed to create checkout session", "error");
+        showToast.error("Failed to create checkout session");
         setBuyingCredits(false);
       }
     } catch (error) {
       console.error("Failed to buy SMS credits:", error);
-      showToast("Failed to purchase SMS credits", "error");
+      showToast.error("Failed to purchase SMS credits");
       setBuyingCredits(false);
     }
   };
 
   const handleChangePlan = async (planName: string) => {
     if (planName === billing?.plan) {
-      showToast("You're already on this plan", "error");
+      showToast.error("You're already on this plan");
       return;
     }
 
@@ -218,7 +212,7 @@ export default function BillingPage() {
         if (response.ok && data.url) {
           window.location.href = data.url;
         } else {
-          showToast(data.error || "Failed to start subscription", "error");
+          showToast.error(data.error || "Failed to start subscription");
           setChangingPlan(false);
         }
       } else {
@@ -241,23 +235,22 @@ export default function BillingPage() {
           if (checkoutResponse.ok && checkoutData.url) {
             window.location.href = checkoutData.url;
           } else {
-            showToast(checkoutData.error || "Failed to refresh subscription", "error");
+            showToast.error(checkoutData.error || "Failed to refresh subscription");
             setChangingPlan(false);
           }
         } else if (data.configRequired) {
-          showToast(
-            "Stripe Customer Portal needs to be configured. Please visit Stripe Dashboard → Settings → Customer Portal",
-            "error"
+          showToast.error(
+            "Stripe Customer Portal needs to be configured. Please visit Stripe Dashboard → Settings → Customer Portal"
           );
           setChangingPlan(false);
         } else {
-          showToast(data.error || "Failed to open billing portal", "error");
+          showToast.error(data.error || "Failed to open billing portal");
           setChangingPlan(false);
         }
       }
     } catch (error) {
       console.error("Failed to change plan:", error);
-      showToast("Network error. Please try again.", "error");
+      showToast.error("Network error. Please try again.");
       setChangingPlan(false);
     }
   };
@@ -272,12 +265,12 @@ export default function BillingPage() {
       if (response.ok && data.url) {
         window.location.href = data.url;
       } else {
-        showToast(data.error || "Failed to open billing portal", "error");
+        showToast.error(data.error || "Failed to open billing portal");
         setCancelingSubscription(false);
       }
     } catch (error) {
       console.error("Failed to open portal:", error);
-      showToast("Failed to cancel subscription", "error");
+      showToast.error("Failed to cancel subscription");
       setCancelingSubscription(false);
     }
   };
@@ -790,37 +783,6 @@ export default function BillingPage() {
             </div>
           )}
         </div>
-        {/* Toast Notification */}
-        <AnimatePresence>
-          {toast && (
-            <motion.div
-              initial={{ opacity: 0, y: -50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -50 }}
-              className="fixed top-4 right-4 z-50"
-            >
-              <div
-                className={`px-6 py-4 rounded-lg shadow-lg border ${
-                  toast.type === "success"
-                    ? "bg-green-500/20 border-green-500/50 text-green-400"
-                    : "bg-red-500/20 border-red-500/50 text-red-400"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  {toast.type === "success" ? (
-                    <CheckCircle className="w-5 h-5" />
-                  ) : (
-                    <AlertTriangle className="w-5 h-5" />
-                  )}
-                  <p className="font-medium">{toast.message}</p>
-                  <button onClick={() => setToast(null)} className="ml-2">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Change Plan Modal */}
         <AnimatePresence>

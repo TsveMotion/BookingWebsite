@@ -19,6 +19,7 @@ import {
   Plus,
 } from "lucide-react";
 import Link from "next/link";
+import { showToast } from "@/lib/toast";
 
 interface Client {
   id: string;
@@ -75,6 +76,7 @@ export default function NewBookingPage() {
       setLoading(false);
     } catch (error) {
       console.error("Failed to fetch data:", error);
+      showToast.error("Failed to load clients and services. Please refresh the page.");
       setLoading(false);
     }
   };
@@ -83,11 +85,20 @@ export default function NewBookingPage() {
     e.preventDefault();
     setSubmitting(true);
 
+    const loadingToast = showToast.loading("Creating booking...");
+
     try {
       let clientId = selectedClient;
 
       // Create new client if in new client mode
       if (newClientMode) {
+        if (!newClientName.trim() || !newClientEmail.trim()) {
+          showToast.dismiss(loadingToast);
+          showToast.error("Client name and email are required");
+          setSubmitting(false);
+          return;
+        }
+
         const clientRes = await fetch("/api/clients", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -99,17 +110,37 @@ export default function NewBookingPage() {
         });
 
         if (!clientRes.ok) {
-          throw new Error("Failed to create client");
+          const errorData = await clientRes.json();
+          throw new Error(errorData.error || "Failed to create client");
         }
 
         const newClient = await clientRes.json();
         clientId = newClient.id;
       }
 
+      // Validate client selection
+      if (!clientId) {
+        showToast.dismiss(loadingToast);
+        showToast.error("Please select a client");
+        setSubmitting(false);
+        return;
+      }
+
       // Get service details
       const service = services.find((s) => s.id === selectedService);
       if (!service) {
-        throw new Error("Service not found");
+        showToast.dismiss(loadingToast);
+        showToast.error("Please select a service");
+        setSubmitting(false);
+        return;
+      }
+
+      // Validate date and time
+      if (!date || !time) {
+        showToast.dismiss(loadingToast);
+        showToast.error("Please select date and time");
+        setSubmitting(false);
+        return;
       }
 
       // Create booking
@@ -131,16 +162,28 @@ export default function NewBookingPage() {
       });
 
       if (!bookingRes.ok) {
-        throw new Error("Failed to create booking");
+        const errorData = await bookingRes.json();
+        throw new Error(errorData.error || "Failed to create booking");
       }
 
       const booking = await bookingRes.json();
 
-      // Redirect to bookings page
-      router.push("/dashboard/bookings");
+      showToast.dismiss(loadingToast);
+      
+      if (paymentType === "online") {
+        showToast.success("✅ Booking created! Payment link sent to client.");
+      } else {
+        showToast.success("✅ Booking created successfully!");
+      }
+
+      // Redirect to bookings page after short delay
+      setTimeout(() => {
+        router.push("/dashboard/bookings");
+      }, 1500);
     } catch (error) {
       console.error("Failed to create booking:", error);
-      alert("Failed to create booking. Please try again.");
+      showToast.dismiss(loadingToast);
+      showToast.error(error instanceof Error ? error.message : "Failed to create booking. Please try again.");
       setSubmitting(false);
     }
   };

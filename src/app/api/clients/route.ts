@@ -30,7 +30,22 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(clients);
+    // Fetch all locations for this owner
+    const locations = await prisma.location.findMany({
+      where: { ownerId },
+      select: { id: true, name: true },
+    });
+
+    // Create a location map for quick lookup
+    const locationMap = new Map(locations.map(loc => [loc.id, loc]));
+
+    // Add location data to each client
+    const clientsWithLocation = clients.map(client => ({
+      ...client,
+      location: client.locationId ? locationMap.get(client.locationId) : null,
+    }));
+
+    return NextResponse.json(clientsWithLocation);
   } catch (error) {
     console.error('Error fetching clients:', error);
     return NextResponse.json(
@@ -60,7 +75,7 @@ export async function POST(request: Request) {
     });
 
     const body = await request.json();
-    const { name, email, phone } = body;
+    const { name, email, phone, locationId } = body;
 
     const ownerId = await getBusinessOwnerId(userId);
 
@@ -70,6 +85,7 @@ export async function POST(request: Request) {
         name,
         email,
         phone: phone || null,
+        locationId: locationId || null,
       },
     });
 

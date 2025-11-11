@@ -1,4 +1,4 @@
-import { sendEmail } from './email';
+import { sendEmail } from './resend-email';
 
 /**
  * Send notification to business owner when a new booking is created
@@ -94,7 +94,6 @@ export async function notifyOwnerNewBooking(
 
   return await sendEmail({
     to: ownerEmail,
-    name: ownerName,
     subject,
     html,
   });
@@ -176,7 +175,6 @@ export async function notifyOwnerPaymentReceived(
 
   return await sendEmail({
     to: ownerEmail,
-    name: ownerName,
     subject,
     html,
   });
@@ -240,7 +238,6 @@ export async function notifyOwnerSubscriptionChange(
 
   return await sendEmail({
     to: ownerEmail,
-    name: ownerName,
     subject,
     html,
   });

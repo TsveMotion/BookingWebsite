@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Calendar, DollarSign, TrendingUp, Mail, Tag, Crown, Lock, Phone, Clock } from "lucide-react";
+import { X, User, Calendar, DollarSign, TrendingUp, Mail, Tag, Crown, Lock, Phone, Clock, MapPin } from "lucide-react";
 import { useState } from "react";
 
 interface Client {
@@ -15,6 +15,11 @@ interface Client {
   lifetimeValue?: number;
   notes?: string;
   tags?: string[];
+  locationId?: string;
+  location?: {
+    id: string;
+    name: string;
+  };
 }
 
 interface Booking {
@@ -42,6 +47,8 @@ export function ClientDrawer({ client, isOpen, onClose, userPlan, onSendRetentio
   const [insights, setInsights] = useState<any>(null);
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>(client?.tags || []);
+  const [savingTags, setSavingTags] = useState(false);
 
   const isPro = userPlan.toLowerCase() === "pro" || userPlan.toLowerCase() === "business";
   const isBusiness = userPlan.toLowerCase() === "business";
@@ -91,6 +98,35 @@ export function ClientDrawer({ client, isOpen, onClose, userPlan, onSendRetentio
       console.error("Failed to save notes:", error);
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const handleToggleTag = async (tag: string) => {
+    if (!client || !isPro) return;
+    
+    const newTags = selectedTags.includes(tag)
+      ? selectedTags.filter(t => t !== tag)
+      : [...selectedTags, tag];
+    
+    setSelectedTags(newTags);
+    setSavingTags(true);
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}/tags`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: newTags }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setSelectedTags(selectedTags);
+      }
+    } catch (error) {
+      console.error("Failed to save tags:", error);
+      setSelectedTags(selectedTags);
+    } finally {
+      setSavingTags(false);
     }
   };
 
@@ -241,6 +277,12 @@ export function ClientDrawer({ client, isOpen, onClose, userPlan, onSendRetentio
                           <Calendar className="w-4 h-4" />
                           <span>{client.totalBookings || 0} Total Bookings</span>
                         </div>
+                        {client.location && (
+                          <div className="flex items-center gap-3 text-white/70">
+                            <MapPin className="w-4 h-4" />
+                            <span>{client.location.name}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -288,16 +330,22 @@ export function ClientDrawer({ client, isOpen, onClose, userPlan, onSendRetentio
                             <motion.button
                               key={tag}
                               whileHover={{ scale: 1.05 }}
-                              className={`px-3 py-1 rounded-full text-sm font-semibold border ${
-                                client.tags?.includes(tag)
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleToggleTag(tag)}
+                              disabled={savingTags}
+                              className={`px-3 py-1 rounded-full text-sm font-semibold border transition-all ${
+                                selectedTags.includes(tag)
                                   ? "bg-luxury-gradient border-transparent text-white"
                                   : "border-white/20 text-white/60 hover:border-lavender"
-                              }`}
+                              } disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
                               {tag}
                             </motion.button>
                           ))}
                         </div>
+                        {savingTags && (
+                          <p className="text-white/60 text-xs mt-2">Saving...</p>
+                        )}
                       </div>
                     )}
                   </motion.div>
@@ -375,14 +423,30 @@ export function ClientDrawer({ client, isOpen, onClose, userPlan, onSendRetentio
                           </div>
                         </div>
 
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          onClick={() => onSendRetentionEmail?.(client.id)}
-                          className="w-full px-6 py-3 bg-gradient-to-r from-lavender to-rose-gradient text-white font-bold rounded-xl flex items-center justify-center gap-2"
-                        >
-                          <Mail className="w-5 h-5" />
-                          Send Retention Email
-                        </motion.button>
+                        <div className="space-y-3">
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            onClick={() => onSendRetentionEmail?.(client.id)}
+                            className="w-full px-6 py-3 bg-gradient-to-r from-lavender to-rose-gradient text-white font-bold rounded-xl flex items-center justify-center gap-2"
+                          >
+                            <Mail className="w-5 h-5" />
+                            Send Retention Email
+                          </motion.button>
+                          
+                          <div className="relative group">
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              disabled
+                              className="w-full px-6 py-3 bg-white/10 text-white/60 font-bold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed relative"
+                            >
+                              <Mail className="w-5 h-5" />
+                              Customize Email Template
+                              <span className="ml-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/30">
+                                Coming Soon
+                              </span>
+                            </motion.button>
+                          </div>
+                        </div>
                       </>
                     )}
                   </motion.div>

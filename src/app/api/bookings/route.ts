@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
-import { sendEmail, paymentLinkEmail, bookingConfirmationEmail } from '@/lib/email';
+import { sendPaymentLinkEmail, sendBookingConfirmationEmail, sendManualPaymentInstructionsEmail } from '@/lib/resend-email';
 import { notifyOwnerNewBooking } from '@/lib/owner-notifications';
 import { invalidateBookingCache } from '@/lib/cache-invalidation';
 import { getBusinessOwnerId } from '@/lib/get-business-owner';
@@ -170,50 +170,60 @@ export async function POST(request: Request) {
       minute: '2-digit',
     });
 
-    // Send email to client
+    // Send email to client using Resend
     if (client.email) {
-      let emailHtml: string;
-      let emailSubject: string;
+      let emailResult;
 
       if (paymentLink) {
         // Send payment link email
-        console.log(`📧 Sending payment link to ${client.email}`);
-        emailHtml = paymentLinkEmail(
+        console.log(`📧 Sending payment link to ${client.email} via Resend`);
+        emailResult = await sendPaymentLinkEmail(
+          client.email,
           client.name,
-          businessName,
-          service.name,
-          formattedDate,
-          formattedTime,
-          totalAmount,
-          paymentLink
+          paymentLink,
+          {
+            businessName,
+            serviceName: service.name,
+            date: formattedDate,
+            time: formattedTime,
+            price: totalAmount,
+          }
         );
-        emailSubject = `💳 Payment Required - ${service.name} Booking`;
+      } else if (paymentType === 'manual') {
+        // Send manual payment instructions
+        console.log(`📧 Sending manual payment instructions to ${client.email} via Resend`);
+        emailResult = await sendManualPaymentInstructionsEmail(
+          client.email,
+          client.name,
+          {
+            businessName,
+            serviceName: service.name,
+            date: formattedDate,
+            time: formattedTime,
+            price: totalAmount,
+          }
+        );
       } else {
         // Send booking confirmation email
-        console.log(`📧 Sending booking confirmation to ${client.email}`);
-        emailHtml = bookingConfirmationEmail(
+        console.log(`📧 Sending booking confirmation to ${client.email} via Resend`);
+        emailResult = await sendBookingConfirmationEmail(
+          client.email,
           client.name,
-          businessName,
-          service.name,
-          formattedDate,
-          formattedTime,
-          totalAmount,
-          paymentType === 'manual'
+          {
+            businessName,
+            serviceName: service.name,
+            date: formattedDate,
+            time: formattedTime,
+            price: totalAmount,
+            isManualPayment: false,
+          }
         );
-        emailSubject = `✨ Booking Confirmed - ${service.name}`;
       }
 
-      const emailResult = await sendEmail({
-        to: client.email,
-        subject: emailSubject,
-        html: emailHtml,
-        name: client.name,
-      });
-
       if (emailResult.success) {
-        console.log(`✅ Email sent successfully to ${client.email}`);
+        console.log(`✅ Email sent successfully to ${client.email} via Resend`);
       } else {
-        console.error(`❌ Failed to send email:`, emailResult.error);
+        console.error(`❌ Failed to send email via Resend:`, emailResult.error);
       }
     }
 

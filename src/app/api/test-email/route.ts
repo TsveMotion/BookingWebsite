@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { sendEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -78,7 +78,6 @@ export async function POST() {
 
     const result = await sendEmail({
       to: user.email,
-      name: user.name || undefined,
       subject: '✅ GlamBooking Email Test - Success!',
       html: testHtml,
     });

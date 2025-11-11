@@ -3,9 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
 import ServiceSelection from "@/components/booking/ServiceSelection";
-import LocationSelection from "@/components/booking/LocationSelection";
 import StaffSelection from "@/components/booking/StaffSelection";
 import DateTimeSelection from "@/components/booking/DateTimeSelection";
 import ClientDetailsForm from "@/components/booking/ClientDetailsForm";
@@ -16,7 +14,6 @@ interface Location {
   name: string;
   address?: string;
   phone?: string;
-  workingHours?: any;
 }
 
 interface ServiceAddon {
@@ -42,13 +39,10 @@ interface Business {
   id: string;
   businessName?: string;
   description?: string;
-  address?: string;
-  phone?: string;
   logo?: string;
   logoUrl?: string;
   plan?: string;
   services: Service[];
-  ownedLocations?: Location[];
 }
 
 interface StaffMember {
@@ -63,7 +57,6 @@ export default function PublicBookingPage() {
   const params = useParams();
   const businessSlug = params.businessSlug as string;
 
-  // State
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
@@ -84,7 +77,7 @@ export default function PublicBookingPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const steps = ["Service", "Location", "Staff", "Date & Time", "Details", "Review"];
+  const steps = ["Service", "Staff", "Date & Time", "Details", "Review"];
 
   useEffect(() => {
     fetchBusiness();
@@ -109,9 +102,9 @@ export default function PublicBookingPage() {
       if (response.ok) {
         setBusiness(data);
       }
-      setLoading(false);
     } catch (error) {
       console.error("Failed to fetch business:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -154,10 +147,16 @@ export default function PublicBookingPage() {
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
+  const handleFormChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleToggleAddon = (addonId: string) => {
+    setSelectedAddons(prev =>
+      prev.includes(addonId)
+        ? prev.filter(id => id !== addonId)
+        : [...prev, addonId]
+    );
   };
 
   const handleSubmitBooking = async () => {
@@ -200,21 +199,9 @@ export default function PublicBookingPage() {
     }
   };
 
-  const handleFormChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleToggleAddon = (addonId: string) => {
-    setSelectedAddons(prev =>
-      prev.includes(addonId)
-        ? prev.filter(id => id !== addonId)
-        : [...prev, addonId]
-    );
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <motion.div
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 1.5, repeat: Infinity }}
@@ -228,10 +215,10 @@ export default function PublicBookingPage() {
 
   if (!business) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-white mb-4">Business Not Found</h1>
-          <p className="text-white/60">The booking page you&apos;re looking for doesn&apos;t exist.</p>
+          <p className="text-white/60">The booking page you're looking for doesn't exist.</p>
         </div>
       </div>
     );
@@ -239,35 +226,35 @@ export default function PublicBookingPage() {
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="max-w-xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Business Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 text-center"
+          className="mb-8 text-center"
         >
           {(business.logoUrl || business.logo) && (
             <img
               src={business.logoUrl || business.logo}
               alt={business.businessName || "Business"}
-              className="h-12 w-auto object-contain mx-auto mb-3"
+              className="h-16 w-auto object-contain mx-auto mb-4"
             />
           )}
-          <h1 className="text-xl font-bold text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             {business.businessName || "Book an Appointment"}
           </h1>
           {business.description && (
-            <p className="text-white/60 text-xs">{business.description}</p>
+            <p className="text-white/60 text-sm">{business.description}</p>
           )}
         </motion.div>
 
         {/* Step Progress */}
-        <div className="mb-6">
-          <div className="flex items-center justify-center mb-2">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
             {steps.map((step, index) => (
               <div key={step} className="flex items-center">
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
                     index === currentStep
                       ? "bg-gradient-to-br from-[#e7b5ff] to-[#d4a5ff] text-black"
                       : index < currentStep
@@ -279,7 +266,7 @@ export default function PublicBookingPage() {
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`h-0.5 w-6 mx-1 transition-all ${
+                    className={`h-0.5 w-8 mx-1 transition-all ${
                       index < currentStep ? "bg-[#e7b5ff]/50" : "bg-white/10"
                     }`}
                   />
@@ -287,11 +274,11 @@ export default function PublicBookingPage() {
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-white/50 font-medium">{steps[currentStep]}</p>
+          <p className="text-center text-sm text-white/60">{steps[currentStep]}</p>
         </div>
 
         {/* Booking Steps */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
           <AnimatePresence mode="wait">
             {/* Step 0: Select Service */}
             {currentStep === 0 && (
@@ -312,25 +299,8 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
 
-            {/* Step 1: Select Location */}
-            {currentStep === 1 && business.ownedLocations && business.ownedLocations.length > 0 && (
-              <motion.div
-                key="location"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
-                <LocationSelection
-                  locations={business.ownedLocations}
-                  selectedLocation={selectedLocation}
-                  onSelectLocation={setSelectedLocation}
-                  onNext={handleNext}
-                />
-              </motion.div>
-            )}
-
-            {/* Step 2: Select Staff */}
-            {currentStep === 2 && (
+            {/* Step 1: Select Staff */}
+            {currentStep === 1 && (
               <motion.div
                 key="staff"
                 initial={{ opacity: 0, x: 20 }}
@@ -346,8 +316,8 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
 
-            {/* Step 3: Date & Time */}
-            {currentStep === 3 && (
+            {/* Step 2: Date & Time */}
+            {currentStep === 2 && (
               <motion.div
                 key="datetime"
                 initial={{ opacity: 0, x: 20 }}
@@ -366,8 +336,8 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
 
-            {/* Step 4: Client Details */}
-            {currentStep === 4 && (
+            {/* Step 3: Client Details */}
+            {currentStep === 3 && (
               <motion.div
                 key="details"
                 initial={{ opacity: 0, x: 20 }}
@@ -382,8 +352,8 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
 
-            {/* Step 5: Review & Confirm */}
-            {currentStep === 5 && selectedService && selectedDate && selectedTime && (
+            {/* Step 4: Review & Confirm */}
+            {currentStep === 4 && selectedService && selectedDate && selectedTime && (
               <motion.div
                 key="review"
                 initial={{ opacity: 0, x: 20 }}
@@ -406,55 +376,28 @@ export default function PublicBookingPage() {
               </motion.div>
             )}
           </AnimatePresence>
-
         </div>
 
-        {/* Branding Footer - Show only for Free plan */}
-        {(!business.plan || business.plan.toLowerCase() === 'free') ? (
+        {/* Branding Footer */}
+        {(!business.plan || business.plan.toLowerCase() === 'free') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
             className="text-center mt-8 py-6 border-t border-white/10"
           >
-            <p className="text-white/40 text-sm mb-2">
+            <p className="text-white/40 text-sm">
               Powered by{' '}
               <a
                 href="https://glambooking.co.uk"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-lavender hover:text-blush transition-colors underline font-semibold"
+                className="text-[#e7b5ff] hover:text-[#d4a5ff] transition-colors font-semibold"
               >
-                GlamBooking.co.uk
-              </a>
-            </p>
-            <p className="text-white/30 text-xs">
-              Need a booking system for your business?{' '}
-              <a
-                href="https://glambooking.co.uk"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/50 hover:text-lavender transition-colors underline"
-              >
-                Try GlamBooking
+                GlamBooking
               </a>
             </p>
           </motion.div>
-        ) : (
-          business.logoUrl && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="text-center mt-8"
-            >
-              <img
-                src={business.logoUrl}
-                alt="Business Logo"
-                className="h-12 mx-auto"
-              />
-            </motion.div>
-          )
         )}
       </div>
     </div>

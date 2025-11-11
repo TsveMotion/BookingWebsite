@@ -40,7 +40,7 @@ function PaymentSuccessContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center p-4">
-      {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
+      {showConfetti && width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
 
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}

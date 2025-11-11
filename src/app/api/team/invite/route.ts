@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { ensureUserExists } from '@/lib/ensure-user';
-import { sendEmail, teamInvitationEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
+import { teamInvitationEmail } from '@/lib/email';
 import crypto from 'crypto';
 
 export async function POST(request: Request) {
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // Send email invitation via Brevo
+    // Send email invitation via Resend
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const businessName = user?.businessName || user?.name || 'GlamBooking Business';
     

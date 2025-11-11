@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe-server';
 import { prisma } from '@/lib/prisma';
-import { sendEmail, bookingConfirmationEmail, bookingConfirmationWithInvoiceEmail } from '@/lib/email';
+import { sendEmail, sendBookingConfirmationEmail } from '@/lib/resend-email';
 import { notifyOwnerPaymentReceived, notifyOwnerSubscriptionChange } from '@/lib/owner-notifications';
 import { generateInvoicePDF } from '@/lib/invoice';
 import Stripe from 'stripe';
@@ -103,7 +103,6 @@ export async function POST(request: Request) {
               try {
                 await sendEmail({
                   to: user.email,
-                  name: user.businessName || 'there',
                   subject: `🎉 Welcome to GlamBooking ${planName.charAt(0).toUpperCase() + planName.slice(1)}!`,
                   html: `
                     <!DOCTYPE html>
@@ -580,23 +579,34 @@ export async function POST(request: Request) {
             minute: '2-digit',
           });
 
-          await sendEmail({
-            to: booking.client.email,
-            name: booking.client.name,
-            subject: `🎉 Booking Confirmed - ${booking.service.name}`,
-            html: bookingConfirmationWithInvoiceEmail(
-              booking.client.name,
-              booking.user.businessName || 'Business',
-              booking.service.name,
-              formattedDate,
-              formattedTime,
-              booking.totalAmount,
-              undefined,
-              invoiceUrl
-            ),
-          });
+          await sendBookingConfirmationEmail(
+            booking.client.email,
+            booking.client.name,
+            {
+              businessName: booking.user.businessName || 'Business',
+              serviceName: booking.service.name,
+              date: formattedDate,
+              time: formattedTime,
+              price: booking.totalAmount,
+              isManualPayment: false,
+            }
+          );
 
           console.log('📧 Confirmation email sent to:', booking.client.email);
+
+          // Notify owner about payment received
+          if (booking.user.email) {
+            console.log('📧 Sending payment notification to owner:', booking.user.email);
+            await notifyOwnerPaymentReceived(
+              booking.user.email,
+              booking.user.businessName || booking.user.name || 'Business Owner',
+              booking.client.name,
+              booking.service.name,
+              Number(booking.totalAmount),
+              formattedDate + ' at ' + formattedTime
+            );
+          }
+
           console.log('✅ Booking fully processed!');
         } catch (error) {
           console.error('❌ Error processing booking confirmation:', error);
@@ -665,21 +675,32 @@ export async function POST(request: Request) {
               minute: '2-digit' 
             });
 
-            await sendEmail({
-              to: booking.client.email,
-              name: booking.client.name,
-              subject: '✅ Payment Confirmed - Your Booking is Complete!',
-              html: bookingConfirmationEmail(
-                booking.client.name,
-                booking.user.businessName || 'the business',
-                booking.service.name,
-                formattedDate,
-                formattedTime,
-                booking.totalAmount,
-                false
-              ),
-            });
+            await sendBookingConfirmationEmail(
+              booking.client.email,
+              booking.client.name,
+              {
+                businessName: booking.user.businessName || 'the business',
+                serviceName: booking.service.name,
+                date: formattedDate,
+                time: formattedTime,
+                price: booking.totalAmount,
+                isManualPayment: false,
+              }
+            );
             console.log('✅ Payment confirmation email sent');
+
+            // Notify owner about payment received
+            if (booking.user.email) {
+              console.log('📧 Sending payment notification to owner:', booking.user.email);
+              await notifyOwnerPaymentReceived(
+                booking.user.email,
+                booking.user.businessName || booking.user.name || 'Business Owner',
+                booking.client.name,
+                booking.service.name,
+                Number(booking.totalAmount),
+                formattedDate + ' at ' + formattedTime
+              );
+            }
           }
         } else {
           console.log('ℹ️ No booking found for payment intent:', paymentIntent.id);

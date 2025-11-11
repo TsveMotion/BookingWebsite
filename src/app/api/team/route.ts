@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { ensureUserExists } from '@/lib/ensure-user';
-import { sendEmail, teamInvitationEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
+import { teamInvitationEmail } from '@/lib/email';
 import crypto from 'crypto';
 import { getBusinessOwnerId } from '@/lib/get-business-owner';
 
@@ -136,7 +137,6 @@ export async function POST(request: Request) {
 
       const emailResult = await sendEmail({
         to: email,
-        name,
         subject: `You've been invited to join ${businessName} on GlamBooking`,
         html: emailHtml,
       });

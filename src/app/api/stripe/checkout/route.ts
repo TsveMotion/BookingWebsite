@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       staffId,
       startTime,
       notes,
+      addons = [],
     } = body;
 
     // Ensure APP_URL has proper scheme
@@ -39,15 +40,28 @@ export async function POST(request: Request) {
     // Get service details
     const service = await prisma.service.findUnique({
       where: { id: serviceId },
-      select: { name: true, price: true, duration: true },
+      select: { 
+        name: true, 
+        price: true, 
+        duration: true,
+        addons: {
+          where: { active: true },
+          select: { id: true, name: true, extraPrice: true, extraTime: true },
+        },
+      },
     });
 
     if (!service) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
 
+    // Calculate addons cost
+    const selectedAddons = service.addons?.filter(addon => addons.includes(addon.id)) || [];
+    const addonsCost = selectedAddons.reduce((sum, addon) => sum + addon.extraPrice, 0);
+    const addonsDuration = selectedAddons.reduce((sum, addon) => sum + addon.extraTime, 0);
+    
     // No platform fee (0% commission as per requirements)
-    const totalAmount = service.price;
+    const totalAmount = service.price + addonsCost;
     const platformFee = 0; // 0% commission
     const businessAmount = Math.round(totalAmount * 100);
 
@@ -68,10 +82,11 @@ export async function POST(request: Request) {
       });
     }
 
-    // Calculate end time
+    // Calculate end time (including addons)
     const start = new Date(startTime);
     const end = new Date(start);
-    end.setMinutes(end.getMinutes() + service.duration);
+    const totalDuration = service.duration + addonsDuration;
+    end.setMinutes(end.getMinutes() + totalDuration);
 
     // Create pending booking
     const booking = await prisma.booking.create({
@@ -100,7 +115,7 @@ export async function POST(request: Request) {
             currency: "gbp",
             product_data: {
               name: service.name,
-              description: `${service.duration} minutes with ${business.businessName}`,
+              description: `${totalDuration} minutes${selectedAddons.length > 0 ? ` (includes ${selectedAddons.length} add-on${selectedAddons.length > 1 ? 's' : ''})` : ''} with ${business.businessName}`,
             },
             unit_amount: Math.round(totalAmount * 100),
           },
@@ -117,16 +132,7 @@ export async function POST(request: Request) {
       },
     };
 
-    // If business has Stripe Connect, use it
-    if (business.stripeAccountId) {
-      sessionParams.payment_intent_data = {
-        application_fee_amount: platformFee,
-        transfer_data: {
-          destination: business.stripeAccountId,
-        },
-      };
-    }
-
+    // Note: Stripe Connect transfers disabled - collect payments directly to platform account
     const session = await stripe.checkout.sessions.create(sessionParams);
 
     // Update booking with session ID

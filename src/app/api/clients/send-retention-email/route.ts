@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { sendEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
 
 export async function POST(request: Request) {
   try {
@@ -45,40 +45,55 @@ export async function POST(request: Request) {
 
     const businessName = user?.businessName || 'Your Business';
 
-    // Create retention email
+    // Create professional retention email
     const emailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <style>
-          body { font-family: 'Arial', sans-serif; background: #f9f9f9; padding: 20px; }
-          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-          .header { background: linear-gradient(135deg, #E9B5D8 0%, #C9A5D6 50%, #B8A3D9 100%); padding: 40px 20px; text-align: center; }
-          .header h1 { color: white; margin: 0; font-size: 28px; font-weight: bold; }
-          .content { padding: 40px 30px; }
-          .button { display: inline-block; background: linear-gradient(135deg, #E9B5D8, #C9A5D6); color: white; padding: 16px 40px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 20px 0; font-size: 16px; }
-          .footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
+          body { font-family: 'Georgia', 'Times New Roman', serif; background: #f4f4f4; padding: 20px; margin: 0; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+          .header { background: linear-gradient(135deg, #E9B5D8 0%, #C9A5D6 50%, #B8A3D9 100%); padding: 50px 30px; text-align: center; }
+          .header h1 { color: white; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 1px; }
+          .content { padding: 50px 40px; line-height: 1.8; color: #333; }
+          .content p { margin: 0 0 20px 0; font-size: 16px; }
+          .highlight { background: linear-gradient(135deg, rgba(233, 181, 216, 0.15), rgba(201, 165, 214, 0.15)); border-left: 4px solid #E9B5D8; padding: 20px; margin: 30px 0; border-radius: 4px; }
+          .highlight-text { font-weight: 600; color: #8B5A8E; margin: 0; font-size: 17px; }
+          .button { display: inline-block; background: linear-gradient(135deg, #E9B5D8, #C9A5D6); color: white; padding: 18px 45px; border-radius: 50px; text-decoration: none; font-weight: 600; margin: 30px 0; font-size: 16px; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(233, 181, 216, 0.4); transition: all 0.3s ease; }
+          .signature { margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0; font-style: italic; color: #666; }
+          .footer { text-align: center; padding: 30px; background: #fafafa; color: #888; font-size: 13px; border-top: 1px solid #e0e0e0; }
+          .footer-brand { font-weight: 600; color: #8B5A8E; margin-bottom: 5px; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>💜 We Miss You!</h1>
+            <h1>We Would Love to See You Again</h1>
           </div>
           <div class="content">
-            <p>Hi ${client.name},</p>
-            <p>It's been a while since we last saw you at <strong>${businessName}</strong>, and we wanted to reach out!</p>
-            <p>We'd love to welcome you back and help you look and feel your best. Our team has been thinking of you and would be thrilled to see you again.</p>
-            <p><strong>Special Offer:</strong> Book your next appointment this month and enjoy a complimentary upgrade on your favorite service! 💅✨</p>
+            <p>Dear ${client.name},</p>
+            <p>I hope this message finds you well. It has been some time since your last visit to <strong>${businessName}</strong>, and we wanted to reach out personally to let you know how much we value your patronage.</p>
+            <p>Our team has been thinking of you and would be delighted to welcome you back for another exceptional experience. We remain committed to providing you with the highest standard of service and care.</p>
+            
+            <div class="highlight">
+              <p class="highlight-text">Exclusive Welcome Back Offer</p>
+              <p style="margin: 10px 0 0 0; font-size: 15px; color: #666;">As a valued client, we would like to offer you a complimentary upgrade on your next appointment when booked this month.</p>
+            </div>
+
             <center>
-              <a href="https://glambooking.co.uk/book" class="button">Book Your Appointment</a>
+              <a href="https://glambooking.co.uk/book" class="button">Schedule Your Appointment</a>
             </center>
-            <p style="margin-top: 30px;">We're here whenever you're ready. Looking forward to seeing you soon!</p>
-            <p>With love,<br><strong>${businessName}</strong></p>
+
+            <p style="margin-top: 35px;">We understand that life can be busy, and we are here whenever you are ready to indulge in some well-deserved self-care.</p>
+            
+            <div class="signature">
+              <p style="margin: 0;">With warmest regards,</p>
+              <p style="margin: 8px 0 0 0; font-weight: 600; font-style: normal; color: #333;">${businessName}</p>
+            </div>
           </div>
           <div class="footer">
-            <p>Powered by GlamBooking.co.uk</p>
-            <p>The UK's #1 Beauty Booking Platform</p>
+            <p class="footer-brand">GlamBooking</p>
+            <p>Professional Beauty Management Platform</p>
           </div>
         </div>
       </body>
@@ -88,9 +103,8 @@ export async function POST(request: Request) {
     // Send email
     const emailResult = await sendEmail({
       to: client.email,
-      subject: `We Miss You! Come Back to ${businessName} 💜`,
+      subject: `We Would Love to Welcome You Back – ${businessName}`,
       html: emailHtml,
-      name: client.name,
     });
 
     if (!emailResult.success) {

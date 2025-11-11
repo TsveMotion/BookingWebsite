@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { sendEmail, waitlistConfirmationEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
+import { waitlistConfirmationEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +26,6 @@ export async function POST(request: Request) {
     
     const emailResult = await sendEmail({
       to: email,
-      name,
       subject: '🤖 Welcome to GlamAI Waitlist!',
       html: waitlistConfirmationEmail(name, email),
     });

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { Users, Plus, Mail, Phone, Search, User, TrendingUp, Crown, Lock, Calendar, Eye, Tag, MessageSquare } from "lucide-react";
+import { Users, Plus, Mail, Phone, Search, User, TrendingUp, Crown, Lock, Calendar, Eye, Tag, MessageSquare, MapPin } from "lucide-react";
 import { ClientDrawer } from "@/components/clients/ClientDrawer";
 import { AddClientModal } from "@/components/clients/AddClientModal";
 
@@ -18,6 +18,11 @@ interface Client {
   lifetimeValue?: number;
   notes?: string;
   tags?: string[];
+  locationId?: string;
+  location?: {
+    id: string;
+    name: string;
+  };
   _count: {
     bookings: number;
   };
@@ -40,6 +45,8 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "active" | "inactive" | "vip">("all");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [userPlan, setUserPlan] = useState("free");
@@ -50,6 +57,7 @@ export default function ClientsPage() {
       fetchClients();
       fetchStats();
       fetchUserProfile();
+      fetchLocations();
     }
   }, [isLoaded, user]);
 
@@ -85,6 +93,16 @@ export default function ClientsPage() {
     }
   };
 
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch("/api/locations");
+      const data = await response.json();
+      setLocations(data || []);
+    } catch (error) {
+      console.error("Failed to fetch locations:", error);
+    }
+  };
+
   const handleViewClient = (client: Client) => {
     setSelectedClient(client);
     setIsDrawerOpen(true);
@@ -113,6 +131,11 @@ export default function ClientsPage() {
       (client.phone && client.phone.toLowerCase().includes(searchQuery.toLowerCase()));
     
     if (!matchesSearch) return false;
+    
+    // Location filter
+    if (locationFilter !== "all" && client.locationId !== locationFilter) {
+      return false;
+    }
     
     if (filterType === "all") return true;
     if (filterType === "active") return client._count.bookings > 0;
@@ -251,26 +274,45 @@ export default function ClientsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="glass-card p-6 mb-6"
+          className="glass-card p-6 mb-8"
         >
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
               <input
                 type="text"
+                placeholder="Search by name, email, or phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search clients by name, email, or phone..."
                 className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-lavender transition-colors"
               />
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-2">
+            {/* Location Filter */}
+            {locations.length > 0 && (
+              <div className="relative min-w-[200px]">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 pointer-events-none" />
+                <select
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="all" className="bg-gray-900">All Locations</option>
+                  {locations.map((location) => (
+                    <option key={location.id} value={location.id} className="bg-gray-900">
+                      {location.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Filter by Status */}
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setFilterType("all")}
-                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
                   filterType === "all"
                     ? "bg-luxury-gradient text-white"
                     : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -280,7 +322,7 @@ export default function ClientsPage() {
               </button>
               <button
                 onClick={() => setFilterType("active")}
-                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
                   filterType === "active"
                     ? "bg-luxury-gradient text-white"
                     : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -290,7 +332,7 @@ export default function ClientsPage() {
               </button>
               <button
                 onClick={() => setFilterType("inactive")}
-                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
                   filterType === "inactive"
                     ? "bg-luxury-gradient text-white"
                     : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -298,26 +340,19 @@ export default function ClientsPage() {
               >
                 Inactive
               </button>
-              <button
-                onClick={() => isBusiness && setFilterType("vip")}
-                disabled={!isBusiness}
-                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all relative group ${
-                  filterType === "vip"
-                    ? "bg-luxury-gradient text-white"
-                    : isBusiness
-                    ? "bg-white/5 text-white/60 hover:bg-white/10"
-                    : "bg-white/5 text-white/30 cursor-not-allowed"
-                }`}
-              >
-                VIP {!isBusiness && (
-                  <>
-                    <Crown className="w-3 h-3 inline ml-1 text-yellow-400" />
-                    <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1 rounded-lg text-xs bg-black/90 border border-yellow-500/30 text-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                      Business Feature
-                    </span>
-                  </>
-                )}
-              </button>
+              {isPro && (
+                <button
+                  onClick={() => setFilterType("vip")}
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all flex items-center gap-1 ${
+                    filterType === "vip"
+                      ? "bg-luxury-gradient text-white"
+                      : "bg-white/5 text-white/60 hover:bg-white/10"
+                  }`}
+                >
+                  <Crown className="w-3 h-3" />
+                  VIP
+                </button>
+              )}
             </div>
           </div>
         </motion.div>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendEmail, teamWelcomeEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
+import { teamWelcomeEmail } from '@/lib/email';
 import { auth } from '@clerk/nextjs/server';
 
 export async function POST(request: Request) {
@@ -134,7 +135,6 @@ export async function POST(request: Request) {
       to: invite.email,
       subject: `Welcome to ${businessName} on GlamBooking!`,
       html: welcomeHtml,
-      name: user.name || undefined,
     });
 
     return NextResponse.json({

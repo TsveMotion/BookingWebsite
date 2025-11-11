@@ -87,7 +87,7 @@ export default function BookingConfirmationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black py-12 px-4">
-      {showConfetti && (
+      {showConfetti && windowSize.width > 0 && windowSize.height > 0 && (
         <Confetti
           width={windowSize.width}
           height={windowSize.height}

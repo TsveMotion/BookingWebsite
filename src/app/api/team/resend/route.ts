@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { sendEmail, teamInvitationEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
+import { teamInvitationEmail } from '@/lib/email';
 import { randomUUID } from 'crypto';
 
 export async function POST(request: Request) {
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // Send invitation email via Brevo
+    // Send invitation email via Resend
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const businessName = member.owner.businessName || member.owner.name || 'GlamBooking Business';
     const inviteLink = `${appUrl}/invite/${newToken}`;
@@ -64,7 +65,6 @@ export async function POST(request: Request) {
       to: member.email,
       subject: `Reminder: Join ${businessName} on GlamBooking`,
       html: emailHtml,
-      name: member.name || undefined,
     });
 
     if (!emailResult.success) {

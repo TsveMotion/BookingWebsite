@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe-server';
 import Stripe from 'stripe';
-import { sendEmail, bookingConfirmationEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
+import { bookingConfirmationEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -158,7 +159,6 @@ export async function POST(request: Request) {
 
       await sendEmail({
         to: clientEmail,
-        name: clientName,
         subject: '✨ Booking Confirmed!',
         html: bookingConfirmationEmail(
           clientName,

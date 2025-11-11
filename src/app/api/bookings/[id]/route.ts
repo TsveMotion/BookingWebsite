@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { sendEmail, bookingStatusChangeEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/resend-email';
+import { bookingStatusChangeEmail } from '@/lib/email';
 import { invalidateBookingCache } from '@/lib/cache-invalidation';
 
 type RouteContext = {
@@ -97,7 +98,6 @@ export async function PATCH(
         to: booking.client.email,
         subject: `📅 Booking Status Update - ${booking.service?.name || 'Your Booking'}`,
         html: emailHtml,
-        name: booking.client.name,
       });
 
       if (emailResult.success) {

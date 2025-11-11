@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter_Tight, Manrope } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "react-hot-toast";
 import { autoInitialize } from "@/lib/auto-init";
 import "./globals.css";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className="dark">
         <body className={`${interTight.variable} ${manrope.variable}`}>
+          <Toaster position="top-right" />
           {children}
         </body>
       </html>

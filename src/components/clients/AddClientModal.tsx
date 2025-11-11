@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Mail, Phone } from "lucide-react";
-import { useState } from "react";
+import { X, User, Mail, Phone, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface AddClientModalProps {
   isOpen: boolean;
@@ -15,9 +15,27 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }: AddClientModa
     name: "",
     email: "",
     phone: "",
+    locationId: "",
   });
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchLocations();
+    }
+  }, [isOpen]);
+
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch("/api/locations");
+      const data = await response.json();
+      setLocations(data || []);
+    } catch (error) {
+      console.error("Failed to fetch locations:", error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +54,7 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }: AddClientModa
       }
 
       // Success
-      setFormData({ name: "", email: "", phone: "" });
+      setFormData({ name: "", email: "", phone: "", locationId: "" });
       onClientAdded();
       onClose();
     } catch (err) {
@@ -48,7 +66,7 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }: AddClientModa
   };
 
   const handleClose = () => {
-    setFormData({ name: "", email: "", phone: "" });
+    setFormData({ name: "", email: "", phone: "", locationId: "" });
     setError("");
     onClose();
   };
@@ -145,6 +163,30 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }: AddClientModa
                     />
                   </div>
                 </div>
+
+                {/* Location */}
+                {locations.length > 0 && (
+                  <div>
+                    <label className="block text-white/80 text-sm font-semibold mb-2">
+                      Location/Branch
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                      <select
+                        value={formData.locationId}
+                        onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
+                        className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-lavender transition-colors appearance-none cursor-pointer"
+                      >
+                        <option value="" className="bg-gray-900">All Locations</option>
+                        {locations.map((location) => (
+                          <option key={location.id} value={location.id} className="bg-gray-900">
+                            {location.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 {/* Error Message */}
                 {error && (

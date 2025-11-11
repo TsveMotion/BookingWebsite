@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import { BookingDetailModal } from "@/components/bookings/BookingDetailModal";
 import SendSmsModal from "@/components/modals/SendSmsModal";
+import { showToast } from "@/lib/toast";
 
 interface Booking {
   id: string;
@@ -158,12 +159,7 @@ export default function BookingsPage() {
   };
 
   const handleSendSms = (booking: Booking) => {
-    if (userPlan === "free") {
-      alert("SMS feature requires Pro or Business plan. Upgrade to unlock!");
-      return;
-    }
-    setSelectedSmsBooking(booking);
-    setSmsModalOpen(true);
+    showToast.error("SMS messaging is not available yet.");
   };
 
   const handleSmsSent = () => {
@@ -616,16 +612,20 @@ export default function BookingsPage() {
                               </motion.button>
                             )}
                             {booking.client.phone && (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleSendSms(booking)}
-                                className="px-4 py-2 bg-rose-400/20 hover:bg-rose-400/30 text-rose-400 rounded-lg font-semibold transition-colors border border-rose-400/30 flex items-center gap-2"
-                                title={userPlan === "free" ? "SMS requires Pro/Business plan" : "Send SMS"}
-                              >
-                                <MessageSquare className="w-4 h-4" />
-                                SMS
-                              </motion.button>
+                              <div className="relative group">
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  onClick={() => handleSendSms(booking)}
+                                  className="px-4 py-2 bg-rose-400/10 text-rose-400/50 rounded-lg font-semibold border border-rose-400/20 flex items-center gap-2 cursor-not-allowed"
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                  SMS
+                                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full ml-1">Soon</span>
+                                </motion.button>
+                                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1 rounded-lg text-xs bg-black/90 border border-yellow-500/30 text-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                  SMS notifications are coming soon
+                                </span>
+                              </div>
                             )}
                             <motion.button
                               whileHover={{ scale: 1.05 }}

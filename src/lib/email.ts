@@ -1,4 +1,6 @@
-import axios from 'axios';
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface EmailOptions {
   to: string;
@@ -9,29 +11,18 @@ interface EmailOptions {
 
 export async function sendEmail({ to, subject, html, name }: EmailOptions) {
   try {
-    const response = await axios.post(
-      'https://api.brevo.com/v3/smtp/email',
-      {
-        sender: { 
-          name: 'GlamBooking', 
-          email: 'glambooking@glambooking.co.uk' 
-        },
-        to: [{ email: to, name }],
-        subject,
-        htmlContent: html,
-      },
-      { 
-        headers: { 
-          'api-key': process.env.BREVO_API_KEY,
-          'Content-Type': 'application/json'
-        } 
-      }
-    );
+    const result = await resend.emails.send({
+      from: 'GlamBooking <noreply@glambooking.co.uk>',
+      to: [to],
+      subject,
+      html,
+    });
 
-    return { success: true, data: response.data };
+    console.log(`✅ Email sent successfully to ${to} via Resend`);
+    return { success: true, data: result };
   } catch (error: any) {
-    console.error('Brevo email error:', error.response?.data || error.message);
-    return { success: false, error: error.response?.data || error.message };
+    console.error('❌ Resend email error:', error.message || error);
+    return { success: false, error: error.message || error };
   }
 }
 

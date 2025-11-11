@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Calendar,
@@ -17,13 +17,9 @@ import {
   Wallet,
   LogOut,
   Menu,
-  X,
   Sparkles,
   Gift,
   MapPin,
-  Shield,
-  ChevronDown,
-  ChevronRight,
   Copy,
   Check,
   ExternalLink,
@@ -31,6 +27,7 @@ import {
 import { SignOutButton } from "@clerk/nextjs";
 import { LogoSwitcher } from "./LogoSwitcher";
 import toast from "react-hot-toast";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface NavItem {
   label: string;
@@ -143,7 +140,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 px-4 py-6 overflow-y-auto overflow-x-hidden space-y-2 min-h-0">
         {filteredNavItems.map((item, index) => {
           const Icon = item.icon;
           
@@ -212,12 +209,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Divider */}
-      <div className="mx-4 border-t border-white/10" />
-
       {/* Business Booking Link */}
       {businessSlug && businessName && (
-        <div className="p-4 border-t border-white/10">
+        <div className="px-4 pb-2 pt-4 border-t border-white/10">
           <div className="p-4 bg-luxury-gradient/10 border border-lavender/20 rounded-xl space-y-3">
             <div className="flex items-start gap-2">
               <Sparkles className="w-4 h-4 text-lavender mt-0.5 flex-shrink-0" />
@@ -299,47 +293,26 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden p-3 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl text-white hover:bg-white/10 transition-colors"
-      >
-        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-      </motion.button>
-
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-72 lg:border-r lg:border-white/10 lg:bg-black/80 lg:backdrop-blur-xl">
         <SidebarContent />
       </aside>
 
-      {/* Mobile Sidebar */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-            />
-
-            {/* Sidebar */}
-            <motion.aside
-              initial={{ x: -300 }}
-              animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              transition={{ type: "spring", damping: 25 }}
-              className="fixed inset-y-0 left-0 w-72 border-r border-white/10 bg-black/95 backdrop-blur-xl z-50 lg:hidden"
-            >
-              <SidebarContent />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Mobile Sidebar - Sheet Component */}
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetTrigger asChild>
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed top-4 left-4 z-40 lg:hidden p-3 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl text-white hover:bg-white/10 transition-colors"
+          >
+            <Menu className="w-6 h-6" />
+          </motion.button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-72 p-0 border-white/10">
+          <SidebarContent />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

@@ -71,6 +71,8 @@ model Client {
   phone         String?
   birthday      DateTime?
   notes         String?         @db.Text
+  tags          String[]        @default([])
+  locationId    String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -79,6 +81,7 @@ model Client {
   campaignLogs  CampaignLog[]
 
   @@index([userId])
+  @@index([locationId])
 }
 
 model StripeProduct {
