@@ -10,13 +10,6 @@ export async function GET(request: Request) {
 
     const whereConditions: any = {
       AND: [
-        // Only show businesses with active subscriptions
-        {
-          OR: [
-            { plan: "pro" },
-            { plan: "business" },
-          ],
-        },
         // Must have a business name
         {
           businessName: { not: null },

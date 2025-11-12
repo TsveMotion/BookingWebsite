@@ -34,9 +34,11 @@ export function Nav() {
           : 'bg-black/30 backdrop-blur-md border-white/10'
       }`}
     >
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
-        {/* Logo */}
-        <Link href="/" className="flex items-center">
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="flex h-16 items-center justify-between">
+          {/* Left: Logo */}
+          <div className="flex-1">
+            <Link href="/" className="flex items-center w-fit">
           <motion.div
             whileHover={{ scale: 1.05 }}
             transition={{ duration: 0.2 }}
@@ -49,11 +51,12 @@ export function Nav() {
               className="object-contain transition-all hover:opacity-90"
               priority
             />
-          </motion.div>
-        </Link>
+            </motion.div>
+          </Link>
+        </div>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
+        {/* Center: Desktop Navigation */}
+        <div className="hidden lg:flex items-center justify-center gap-8 flex-1">
           <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
             <Link 
               href="/" 
@@ -101,8 +104,8 @@ export function Nav() {
           </motion.div>
         </div>
 
-        {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Right: Desktop Auth Buttons */}
+        <div className="hidden lg:flex items-center justify-end gap-3 flex-1">
           {isLoaded && !isSignedIn && (
             <>
               <SignInButton mode="modal">
@@ -124,6 +127,13 @@ export function Nav() {
           
           {isLoaded && isSignedIn && (
             <div className="flex items-center gap-3">
+              <Link href="/dashboard">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button variant="ghost" size="sm" className="font-medium">
+                    Dashboard
+                  </Button>
+                </motion.div>
+              </Link>
               <UserButton
                 appearance={{
                   elements: {
@@ -135,17 +145,20 @@ export function Nav() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
-        >
+          {/* Mobile Menu Button */}
+          <div className="lg:hidden">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
           {mobileMenuOpen ? (
             <X className="w-6 h-6 text-white" />
           ) : (
             <Menu className="w-6 h-6 text-white" />
           )}
-        </button>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Mobile Menu */}
@@ -154,7 +167,7 @@ export function Nav() {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
-          className="md:hidden border-t border-white/10 bg-black/95 backdrop-blur-xl"
+          className="lg:hidden border-t border-white/10 bg-black/95 backdrop-blur-xl"
         >
           <div className="container mx-auto px-4 py-6 space-y-4">
             {isLoaded && !isSignedIn && (

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
-import { StripePaymentModal } from "@/components/modals/StripePaymentModal";
 
 const plans = [
   {
@@ -29,10 +28,12 @@ const plans = [
   },
   {
     name: "Pro",
-    priceMonthly: "£19.99",
-    priceYearly: "£203.90",
-    monthlyAmount: 19.99,
-    yearlyAmount: 203.90,
+    priceMonthly: "£24.99",
+    priceYearly: "£254.99",
+    monthlyAmount: 24.99,
+    yearlyAmount: 254.99,
+    priceIdMonthly: "price_1SOMLtGutXTU3oixCgx223jF",
+    priceIdYearly: "price_1SOMNCGutXTU3oixggb8YGgs",
     description: "Everything you need to grow",
     features: [
       "Unlimited staff",
@@ -46,10 +47,12 @@ const plans = [
   },
   {
     name: "Business",
-    priceMonthly: "£39.99",
-    priceYearly: "£407.90",
-    monthlyAmount: 39.99,
-    yearlyAmount: 407.90,
+    priceMonthly: "£49.99",
+    priceYearly: "£509.99",
+    monthlyAmount: 49.99,
+    yearlyAmount: 509.99,
+    priceIdMonthly: "price_1SOMNbGutXTU3oix9XshUkFE",
+    priceIdYearly: "price_1SOMOaGutXTU3oixNwn89Ezd",
     description: "For multi-location teams",
     features: [
       "Multi-location support",
@@ -67,7 +70,46 @@ export default function PricingPage() {
   const { isSignedIn } = useAuth();
   const router = useRouter();
   const [isYearly, setIsYearly] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<{ name: string; period: string; amount: number } | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handleSubscribe = async (plan: typeof plans[0]) => {
+    if (plan.name === "Free") {
+      if (!isSignedIn) {
+        router.push("/sign-up");
+      } else {
+        router.push("/dashboard");
+      }
+      return;
+    }
+
+    if (!isSignedIn) {
+      router.push("/sign-in?redirect_url=/pricing");
+      return;
+    }
+
+    const priceId = isYearly ? (plan as any).priceIdYearly : (plan as any).priceIdMonthly;
+    if (!priceId) return;
+
+    setLoading(plan.name);
+    try {
+      const response = await fetch("/api/stripe/subscription-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId }),
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("Failed to start checkout. Please try again.");
+        setLoading(null);
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      alert("Failed to start checkout. Please try again.");
+      setLoading(null);
+    }
+  };
 
   return (
     <>
@@ -157,29 +199,17 @@ export default function PricingPage() {
                       variant={plan.highlighted ? "gradient" : "outline"}
                       className="w-full"
                       size="lg"
-                      onClick={() => {
-                        if (plan.name === "Free") {
-                          // Free plan - require sign up first
-                          if (!isSignedIn) {
-                            router.push("/sign-up?redirect_url=/dashboard");
-                          } else {
-                            router.push("/dashboard");
-                          }
-                        } else {
-                          // Paid plans - require sign in before payment
-                          if (!isSignedIn) {
-                            router.push(`/sign-in?redirect_url=/pricing`);
-                          } else if ('monthlyAmount' in plan && 'yearlyAmount' in plan && plan.monthlyAmount && plan.yearlyAmount) {
-                            setSelectedPlan({
-                              name: plan.name.toLowerCase(),
-                              period: isYearly ? 'yearly' : 'monthly',
-                              amount: isYearly ? plan.yearlyAmount : plan.monthlyAmount,
-                            });
-                          }
-                        }
-                      }}
+                      onClick={() => handleSubscribe(plan)}
+                      disabled={loading === plan.name}
                     >
-                      {plan.name === "Free" ? "Start Free" : "Subscribe Now"}
+                      {loading === plan.name ? (
+                        <span className="flex items-center gap-2">
+                          <span className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></span>
+                          Processing...
+                        </span>
+                      ) : (
+                        plan.name === "Free" ? "Start Free" : "Subscribe Now"
+                      )}
                     </Button>
                   </CardHeader>
 
@@ -215,19 +245,6 @@ export default function PricingPage() {
       </main>
       <Footer />
 
-      {selectedPlan && (
-        <StripePaymentModal
-          isOpen={!!selectedPlan}
-          onClose={() => setSelectedPlan(null)}
-          planName={selectedPlan.name}
-          billingPeriod={selectedPlan.period as 'monthly' | 'yearly'}
-          amount={selectedPlan.amount}
-          onSuccess={() => {
-            setSelectedPlan(null);
-            router.push('/dashboard/billing?success=true');
-          }}
-        />
-      )}
     </>
   );
 }
