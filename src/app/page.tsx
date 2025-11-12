@@ -3,7 +3,8 @@ import { Footer } from "@/components/Footer";
 import { Hero } from "@/components/sections/hero";
 import { Stats } from "@/components/sections/stats";
 import { Features } from "@/components/sections/features";
-import { PricingPreview } from "@/components/sections/pricing-preview";
+import { Testimonials } from "@/components/sections/testimonials";
+import { PricingFull } from "@/components/sections/pricing-full";
 import { CTA } from "@/components/sections/cta";
 
 export default function Home() {
@@ -14,7 +15,8 @@ export default function Home() {
         <Hero />
         <Stats />
         <Features />
-        <PricingPreview />
+        <Testimonials />
+        <PricingFull />
         <CTA />
       </main>
       <Footer />

@@ -26,8 +26,11 @@ export function Footer() {
                 />
               </motion.div>
             </Link>
-            <p className="text-white/60 text-sm max-w-xs">
-              The ultimate booking platform for beauty and wellness professionals.
+            <p className="text-white/70 text-sm max-w-xs font-medium leading-relaxed">
+              Built by beauty professionals, for beauty professionals.
+            </p>
+            <p className="text-white/50 text-xs max-w-xs">
+              The booking platform that puts you in control. No commissions. Ever.
             </p>
           </div>
 
@@ -133,16 +136,14 @@ export function Footer() {
             © {new Date().getFullYear()} GlamBooking. All rights reserved.
           </p>
           <p className="text-sm text-center md:text-right">
-            <span className="text-white/40">Made with </span>
-            <span className="text-pink-400">💜</span>
-            <span className="text-white/40"> for beauty professionals by </span>
+            <span className="text-white/40">Powered by </span>
             <a 
               href="https://tsvweb.co.uk" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-pink-400 hover:text-pink-300 transition-colors hover:underline font-medium"
+              className="gradient-text hover:text-pink-300 transition-colors hover:underline font-semibold"
             >
-              tsvweb.co.uk
+              TSVWEB.co.uk
             </a>
           </p>
         </div>

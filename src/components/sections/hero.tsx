@@ -19,24 +19,31 @@ export function Hero() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="text-center max-w-5xl mx-auto"
         >
-          <h1 className="text-6xl md:text-7xl lg:text-8xl font-heading font-black mb-6 leading-tight">
-            <span className="gradient-text">Your Business.</span><br />
-            <span className="gradient-text">Your Clients.</span><br />
-            <span className="gradient-text">Your Money.</span>
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-black mb-8 leading-tight">
+            <span className="gradient-text">Run Your Business.</span><br />
+            <span className="text-white">Your Way.</span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-white/70 mb-12 max-w-2xl mx-auto font-body">
-            The booking platform that puts you in control. No commissions. No games. Just growth.
+          <p className="text-xl md:text-2xl text-white/70 mb-6 max-w-3xl mx-auto font-body leading-relaxed">
+            No commissions. No middlemen. Just clients who love you — and software that helps you grow.
+          </p>
+
+          <p className="text-base md:text-lg text-white/50 mb-10 max-w-2xl mx-auto font-body">
+            Loved by salons, beauticians, and wellness professionals across the UK
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button variant="gradient" size="lg">
-              Start Free
-            </Button>
-            <Button variant="outline" size="lg">
-              <Play className="w-5 h-5 mr-2" />
-              Watch Demo
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button variant="gradient" size="lg" className="text-lg px-10 py-6 shadow-2xl shadow-purple-500/30">
+                Start Free
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button variant="outline" size="lg" className="text-lg px-10 py-6">
+                <Play className="w-5 h-5 mr-2" />
+                Watch Demo
+              </Button>
+            </motion.div>
           </div>
         </motion.div>
       </div>

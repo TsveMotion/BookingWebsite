@@ -5,20 +5,34 @@ import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 export function Nav() {
   const { isSignedIn, isLoaded } = useUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const [scrolled, setScrolled] = useState(false);
+
+  // Sticky behavior with scroll detection
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <motion.nav
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="fixed top-0 left-0 right-0 z-50 border-b border-gradient-to-r from-[#EAB8D8] via-[#BBA8F5] to-[#91C4F2] bg-black/30 backdrop-blur-md"
-      style={{ borderBottomWidth: '1px', borderImageSlice: 1, borderImageSource: 'linear-gradient(to right, #EAB8D8, #BBA8F5, #91C4F2)' }}
+      className={`fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300 ${
+        scrolled 
+          ? 'bg-black/95 backdrop-blur-xl border-white/20 shadow-2xl shadow-purple-500/10' 
+          : 'bg-black/30 backdrop-blur-md border-white/10'
+      }`}
     >
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo */}
@@ -39,57 +53,71 @@ export function Nav() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6">
-          <Link 
-            href="/features" 
-            className="text-sm text-white/80 hover:text-white transition-colors relative group"
-          >
-            Features
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
-          </Link>
-          <Link 
-            href="/pricing" 
-            className="text-sm text-white/80 hover:text-white transition-colors relative group"
-          >
-            Pricing
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
-          </Link>
-          <Link 
-            href="/book" 
-            className="text-sm text-white/80 hover:text-white transition-colors relative group"
-          >
-            Find Businesses
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
-          </Link>
-          <Link 
-            href="/dashboard" 
-            className="text-sm text-white/80 hover:text-white transition-colors relative group"
-          >
-            Dashboard
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
-          </Link>
-          <Link 
-            href="/help" 
-            className="text-sm text-white/80 hover:text-white transition-colors relative group"
-          >
-            Help
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
-          </Link>
+        <div className="hidden md:flex items-center gap-8">
+          <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
+            <Link 
+              href="/" 
+              className="text-sm font-medium text-white/80 hover:text-white transition-colors relative group"
+            >
+              Home
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
+            <Link 
+              href="/features" 
+              className="text-sm font-medium text-white/80 hover:text-white transition-colors relative group"
+            >
+              Features
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
+            <Link 
+              href="/pricing" 
+              className="text-sm font-medium text-white/80 hover:text-white transition-colors relative group"
+            >
+              Pricing
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
+            <Link 
+              href="/book" 
+              className="text-sm font-medium text-white/80 hover:text-white transition-colors relative group"
+            >
+              Businesses
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
+            <Link 
+              href="/help" 
+              className="text-sm font-medium text-white/80 hover:text-white transition-colors relative group"
+            >
+              Resources
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-luxury-gradient transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+          </motion.div>
         </div>
 
         {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
           {isLoaded && !isSignedIn && (
             <>
               <SignInButton mode="modal">
-                <Button variant="ghost" size="sm">
-                  Sign In
-                </Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button variant="ghost" size="sm" className="font-medium">
+                    Dashboard / Sign In
+                  </Button>
+                </motion.div>
               </SignInButton>
               <Link href="/sign-up">
-                <Button variant="gradient" size="sm">
-                  Start Free
-                </Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button variant="gradient" size="sm" className="font-semibold shadow-lg shadow-purple-500/25">
+                    Start Free
+                  </Button>
+                </motion.div>
               </Link>
             </>
           )}
